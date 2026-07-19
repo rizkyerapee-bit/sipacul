@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SiPacul.Api/SiPacul.Api.csproj" />
+    <Project Path="src/SiPacul.Application/SiPacul.Application.csproj" />
+    <Project Path="src/SiPacul.Domain/SiPacul.Domain.csproj" />
+    <Project Path="src/SiPacul.Infrastructure/SiPacul.Infrastructure.csproj" />
+    <Project Path="src/SiPacul.Shared/SiPacul.Shared.csproj" />
+  </Folder>
+</Solution>
