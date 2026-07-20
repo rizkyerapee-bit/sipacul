@@ -1,0 +1,22 @@
+# Normalize all detected text files and store them as LF.
+* text=auto eol=lf
+
+# Binary files must never be modified by line-ending normalization.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.tar binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
