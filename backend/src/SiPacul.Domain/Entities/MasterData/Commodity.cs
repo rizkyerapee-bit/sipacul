@@ -17,11 +17,16 @@ public sealed class Commodity : AuditableEntity
 
     public string? Description { get; private set; }
 
+    public Guid CommodityCategoryId { get; private set; }
+
+    public CommodityCategory CommodityCategory { get; private set; } = null!;
+
     public bool IsActive { get; private set; } = true;
 
     public static Commodity Create(
         CommodityCode code,
         string name,
+        Guid commodityCategoryId,
         string? scientificName,
         string? description)
     {
@@ -32,6 +37,7 @@ public sealed class Commodity : AuditableEntity
         {
             Code = code,
             Name = name.Trim(),
+            CommodityCategoryId = commodityCategoryId,
             ScientificName = scientificName?.Trim(),
             Description = description?.Trim()
         };
@@ -39,6 +45,7 @@ public sealed class Commodity : AuditableEntity
 
     public void Update(
         string name,
+        Guid commodityCategoryId,
         string? scientificName,
         string? description)
     {
@@ -46,15 +53,9 @@ public sealed class Commodity : AuditableEntity
             throw new ArgumentException("Commodity name cannot be empty.");
 
         Name = name.Trim();
+        CommodityCategoryId = commodityCategoryId;
         ScientificName = scientificName?.Trim();
         Description = description?.Trim();
-
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void Deactivate()
-    {
-        IsActive = false;
 
         UpdatedAt = DateTime.UtcNow;
     }
@@ -62,7 +63,12 @@ public sealed class Commodity : AuditableEntity
     public void Activate()
     {
         IsActive = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
 
+    public void Deactivate()
+    {
+        IsActive = false;
         UpdatedAt = DateTime.UtcNow;
     }
 }
