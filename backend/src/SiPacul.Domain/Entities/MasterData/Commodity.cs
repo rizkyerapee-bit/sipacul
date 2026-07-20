@@ -3,7 +3,7 @@ using SiPacul.Domain.Common.ValueObjects;
 
 namespace SiPacul.Domain.Entities.MasterData;
 
-public sealed class Commodity : AuditableEntity
+public sealed class Commodity : AggregateRoot
 {
     private Commodity()
     {
