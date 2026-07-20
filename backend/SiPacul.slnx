@@ -6,4 +6,7 @@
     <Project Path="src/SiPacul.Infrastructure/SiPacul.Infrastructure.csproj" />
     <Project Path="src/SiPacul.Shared/SiPacul.Shared.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SiPacul.Domain.Tests/SiPacul.Domain.Tests.csproj" />
+  </Folder>
 </Solution>
