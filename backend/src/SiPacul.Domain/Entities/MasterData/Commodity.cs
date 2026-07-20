@@ -1,5 +1,6 @@
 using SiPacul.Domain.Common.Base;
 using SiPacul.Domain.Common.ValueObjects;
+using SiPacul.Domain.Events.MasterData;
 
 namespace SiPacul.Domain.Entities.MasterData;
 
@@ -33,7 +34,7 @@ public sealed class Commodity : AggregateRoot
         if (string.IsNullOrWhiteSpace(name))
             throw new ArgumentException("Commodity name cannot be empty.");
 
-        return new Commodity
+        var commodity = new Commodity
         {
             Code = code,
             Name = name.Trim(),
@@ -41,6 +42,14 @@ public sealed class Commodity : AggregateRoot
             ScientificName = scientificName?.Trim(),
             Description = description?.Trim()
         };
+
+        commodity.AddDomainEvent(
+            new CommodityCreatedDomainEvent(
+                commodity.Id,
+                commodity.Name,
+                commodity.CommodityCategoryId));
+
+        return commodity;
     }
 
     public void Update(
