@@ -10,7 +10,7 @@ public sealed class CommodityTests
     public void Create_WithValidData_ShouldCreateCommodity()
     {
         // Arrange
-        var code = new CommodityCode("PADI");
+        var code = CommodityCode.Create("PADI");
         var categoryId = Guid.NewGuid();
 
         // Act
@@ -34,7 +34,7 @@ public sealed class CommodityTests
     public void Create_WithWhitespaceAroundText_ShouldTrimText()
     {
         // Arrange
-        var code = new CommodityCode("CABAI");
+        var code = CommodityCode.Create("CABAI");
         var categoryId = Guid.NewGuid();
 
         // Act
@@ -55,7 +55,7 @@ public sealed class CommodityTests
     public void Create_WithValidData_ShouldRaiseCommodityCreatedDomainEvent()
     {
         // Arrange
-        var code = new CommodityCode("JAGUNG");
+        var code = CommodityCode.Create("JAGUNG");
         var categoryId = Guid.NewGuid();
 
         // Act
@@ -76,7 +76,7 @@ public sealed class CommodityTests
     public void Create_ShouldRaiseDomainEventWithCorrectData()
     {
         // Arrange
-        var code = new CommodityCode("KEDELAI");
+        var code = CommodityCode.Create("KEDELAI");
         var categoryId = Guid.NewGuid();
 
         // Act
@@ -101,7 +101,7 @@ public sealed class CommodityTests
     {
         // Arrange
         var commodity = Commodity.Create(
-            new CommodityCode("TOMAT"),
+            CommodityCode.Create("TOMAT"),
             "Tomat",
             Guid.NewGuid(),
             "Solanum lycopersicum",
@@ -123,7 +123,7 @@ public sealed class CommodityTests
     public void Create_WithEmptyName_ShouldThrowArgumentException(string name)
     {
         // Arrange
-        var code = new CommodityCode("INVALID");
+        var code = CommodityCode.Create("INVALID");
         var categoryId = Guid.NewGuid();
 
         // Act
