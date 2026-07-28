@@ -7,11 +7,17 @@ public sealed class CommodityCategoryTests
     [Fact]
     public void Create_WithValidData_ShouldCreateCommodityCategory()
     {
+        var organizationId = Guid.NewGuid();
+
         var category = CommodityCategory.Create(
+            organizationId,
             "Tanaman Pangan",
             "Komoditas pangan utama");
 
         Assert.NotEqual(Guid.Empty, category.Id);
+        Assert.Equal(
+            organizationId,
+            category.OrganizationId);
         Assert.Equal("Tanaman Pangan", category.Name);
         Assert.Equal(
             "Komoditas pangan utama",
@@ -23,9 +29,24 @@ public sealed class CommodityCategoryTests
     }
 
     [Fact]
+    public void Create_WithEmptyOrganizationId_ShouldThrowArgumentException()
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            CommodityCategory.Create(
+                Guid.Empty,
+                "Tanaman Pangan",
+                null));
+
+        Assert.Equal(
+            "organizationId",
+            exception.ParamName);
+    }
+
+    [Fact]
     public void Create_ShouldTrimNameAndDescription()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "  Hortikultura  ",
             "  Sayuran dan buah  ");
 
@@ -44,6 +65,7 @@ public sealed class CommodityCategoryTests
     {
         var exception = Assert.Throws<ArgumentException>(() =>
             CommodityCategory.Create(
+                Guid.NewGuid(),
                 invalidName,
                 null));
 
@@ -59,6 +81,7 @@ public sealed class CommodityCategoryTests
 
         var exception = Assert.Throws<ArgumentException>(() =>
             CommodityCategory.Create(
+                Guid.NewGuid(),
                 invalidName,
                 null));
 
@@ -74,6 +97,7 @@ public sealed class CommodityCategoryTests
 
         var exception = Assert.Throws<ArgumentException>(() =>
             CommodityCategory.Create(
+                Guid.NewGuid(),
                 "Perkebunan",
                 invalidDescription));
 
@@ -86,6 +110,7 @@ public sealed class CommodityCategoryTests
     public void Create_WithNullDescription_ShouldCreateCommodityCategory()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "Peternakan",
             null);
 
@@ -93,9 +118,23 @@ public sealed class CommodityCategoryTests
     }
 
     [Fact]
-    public void Update_WithValidData_ShouldUpdateCommodityCategory()
+    public void Create_WithWhitespaceDescription_ShouldSetDescriptionToNull()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
+            "Peternakan",
+            "   ");
+
+        Assert.Null(category.Description);
+    }
+
+    [Fact]
+    public void Update_WithValidData_ShouldUpdateCommodityCategory()
+    {
+        var organizationId = Guid.NewGuid();
+
+        var category = CommodityCategory.Create(
+            organizationId,
             "Tanaman",
             "Deskripsi awal");
 
@@ -103,6 +142,9 @@ public sealed class CommodityCategoryTests
             "Tanaman Perkebunan",
             "Deskripsi baru");
 
+        Assert.Equal(
+            organizationId,
+            category.OrganizationId);
         Assert.Equal(
             "Tanaman Perkebunan",
             category.Name);
@@ -116,6 +158,7 @@ public sealed class CommodityCategoryTests
     public void Update_ShouldTrimNameAndDescription()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "Tanaman",
             null);
 
@@ -136,6 +179,7 @@ public sealed class CommodityCategoryTests
         string invalidName)
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "Tanaman",
             null);
 
@@ -148,9 +192,25 @@ public sealed class CommodityCategoryTests
     }
 
     [Fact]
+    public void Update_WithUnchangedData_ShouldNotSetUpdatedAt()
+    {
+        var category = CommodityCategory.Create(
+            Guid.NewGuid(),
+            "Tanaman Pangan",
+            "Deskripsi");
+
+        category.Update(
+            "  Tanaman Pangan  ",
+            "  Deskripsi  ");
+
+        Assert.Null(category.UpdatedAt);
+    }
+
+    [Fact]
     public void Deactivate_WhenActive_ShouldDeactivateCommodityCategory()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "Tanaman Pangan",
             null);
 
@@ -164,6 +224,7 @@ public sealed class CommodityCategoryTests
     public void Activate_WhenInactive_ShouldActivateCommodityCategory()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "Tanaman Pangan",
             null);
 
@@ -178,6 +239,7 @@ public sealed class CommodityCategoryTests
     public void ActivateAndDeactivate_WhenStateIsUnchanged_ShouldNotUpdateTimestamp()
     {
         var category = CommodityCategory.Create(
+            Guid.NewGuid(),
             "Tanaman Pangan",
             null);
 
