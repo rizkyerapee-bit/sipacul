@@ -505,4 +505,3 @@ public sealed class OrganizationEndpointTests
         }
     }
 }
-
