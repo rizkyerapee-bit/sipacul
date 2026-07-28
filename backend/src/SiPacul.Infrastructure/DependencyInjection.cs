@@ -11,10 +11,34 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var connectionString =
+            configuration.GetConnectionString(
+                "DefaultConnection");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' " +
+                "has not been configured.");
+        }
+
         services.AddDbContext<SiPaculDbContext>(options =>
         {
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"));
+                connectionString,
+                npgsqlOptions =>
+                {
+                    npgsqlOptions.MigrationsAssembly(
+                        typeof(SiPaculDbContext)
+                            .Assembly
+                            .GetName()
+                            .Name!);
+
+                    npgsqlOptions.EnableRetryOnFailure(
+                        5,
+                        TimeSpan.FromSeconds(10),
+                        null);
+                });
         });
 
         return services;
