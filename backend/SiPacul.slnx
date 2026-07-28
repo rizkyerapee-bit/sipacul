@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SiPacul.Domain.Tests/SiPacul.Domain.Tests.csproj" />
+    <Project Path="tests/SiPacul.Infrastructure.Tests/SiPacul.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

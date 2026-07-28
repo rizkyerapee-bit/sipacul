@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SiPacul.Domain.Entities.MasterData;
+using SiPacul.Domain.Entities.Organizations;
 
 namespace SiPacul.Infrastructure.Data;
 
@@ -11,9 +12,17 @@ public sealed class SiPaculDbContext : DbContext
     {
     }
 
-    public DbSet<Commodity> Commodities => Set<Commodity>();
+    public DbSet<Organization> Organizations =>
+        Set<Organization>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public DbSet<CommodityCategory> CommodityCategories =>
+        Set<CommodityCategory>();
+
+    public DbSet<Commodity> Commodities =>
+        Set<Commodity>();
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(SiPaculDbContext).Assembly);
