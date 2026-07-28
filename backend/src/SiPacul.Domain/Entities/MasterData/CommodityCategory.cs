@@ -4,6 +4,12 @@ namespace SiPacul.Domain.Entities.MasterData;
 
 public sealed class CommodityCategory : AggregateRoot
 {
+    public const int MaxNameLength = 150;
+
+    public const int MaxDescriptionLength = 500;
+
+    private readonly List<Commodity> _commodities = [];
+
     private CommodityCategory()
     {
     }
@@ -14,16 +20,39 @@ public sealed class CommodityCategory : AggregateRoot
 
     public bool IsActive { get; private set; } = true;
 
+    public IReadOnlyCollection<Commodity> Commodities =>
+        _commodities.AsReadOnly();
+
     public static CommodityCategory Create(
         string name,
         string? description)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Category name cannot be empty.");
+        {
+            throw new ArgumentException(
+                "Category name cannot be empty.",
+                nameof(name));
+        }
+
+        var normalizedName = name.Trim();
+
+        if (normalizedName.Length > MaxNameLength)
+        {
+            throw new ArgumentException(
+                $"Category name cannot exceed {MaxNameLength} characters.",
+                nameof(name));
+        }
+
+        if (description?.Length > MaxDescriptionLength)
+        {
+            throw new ArgumentException(
+                $"Description cannot exceed {MaxDescriptionLength} characters.",
+                nameof(description));
+        }
 
         return new CommodityCategory
         {
-            Name = name.Trim(),
+            Name = normalizedName,
             Description = description?.Trim()
         };
     }
@@ -33,9 +62,29 @@ public sealed class CommodityCategory : AggregateRoot
         string? description)
     {
         if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("Category name cannot be empty.");
+        {
+            throw new ArgumentException(
+                "Category name cannot be empty.",
+                nameof(name));
+        }
 
-        Name = name.Trim();
+        var normalizedName = name.Trim();
+
+        if (normalizedName.Length > MaxNameLength)
+        {
+            throw new ArgumentException(
+                $"Category name cannot exceed {MaxNameLength} characters.",
+                nameof(name));
+        }
+
+        if (description?.Length > MaxDescriptionLength)
+        {
+            throw new ArgumentException(
+                $"Description cannot exceed {MaxDescriptionLength} characters.",
+                nameof(description));
+        }
+
+        Name = normalizedName;
         Description = description?.Trim();
 
         UpdatedAt = DateTime.UtcNow;
@@ -43,12 +92,22 @@ public sealed class CommodityCategory : AggregateRoot
 
     public void Activate()
     {
+        if (IsActive)
+        {
+            return;
+        }
+
         IsActive = true;
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Deactivate()
     {
+        if (!IsActive)
+        {
+            return;
+        }
+
         IsActive = false;
         UpdatedAt = DateTime.UtcNow;
     }
