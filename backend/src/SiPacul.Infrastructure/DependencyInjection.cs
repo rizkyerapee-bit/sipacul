@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SiPacul.Application.Common.Persistence;
+using SiPacul.Application.Organizations.Persistence;
 using SiPacul.Infrastructure.Data;
+using SiPacul.Infrastructure.Data.Repositories;
 
 namespace SiPacul.Infrastructure;
 
@@ -40,6 +43,14 @@ public static class DependencyInjection
                         null);
                 });
         });
+
+        services.AddScoped<
+            IOrganizationRepository,
+            OrganizationRepository>();
+
+        services.AddScoped<
+            IUnitOfWork,
+            UnitOfWork>();
 
         return services;
     }
