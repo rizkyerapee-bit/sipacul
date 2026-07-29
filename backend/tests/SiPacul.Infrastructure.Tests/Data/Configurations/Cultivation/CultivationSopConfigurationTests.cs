@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.MasterData;
@@ -166,7 +166,7 @@ public sealed class CultivationSopConfigurationTests
     }
 
     [Fact]
-    public void CultivationSopStep_ShouldHaveUniqueSequenceIndex()
+    public void CultivationSopStep_ShouldNotModelSequenceAsUniqueIndex()
     {
         using var dbContext = CreateDbContext();
 
@@ -174,25 +174,23 @@ public sealed class CultivationSopConfigurationTests
             dbContext.Model.FindEntityType(
                 typeof(CultivationSopStep))!;
 
-        var index =
-            entityType.GetIndexes()
-                .Single(candidate =>
-                    candidate.GetDatabaseName() ==
-                        "UX_CultivationSopSteps_" +
-                        "OrganizationId_SopId_Sequence");
-
-        Assert.True(index.IsUnique);
-
-        Assert.Equal(
+        var sequenceProperties =
             new[]
             {
                 nameof(CultivationSopStep.OrganizationId),
                 nameof(
                     CultivationSopStep.CultivationSopId),
                 nameof(CultivationSopStep.Sequence)
-            },
-            index.Properties
-                .Select(property => property.Name));
+            };
+
+        var sequenceIndex =
+            entityType.GetIndexes()
+                .SingleOrDefault(candidate =>
+                    candidate.Properties
+                        .Select(property => property.Name)
+                        .SequenceEqual(sequenceProperties));
+
+        Assert.Null(sequenceIndex);
     }
 
     [Fact]

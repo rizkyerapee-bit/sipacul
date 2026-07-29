@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Organizations;
@@ -55,23 +55,20 @@ public sealed class CultivationSopStepConfiguration :
                 new
                 {
                     step.OrganizationId,
-                    step.CultivationSopId,
-                    step.Sequence
-                })
-            .IsUnique()
-            .HasDatabaseName(
-                "UX_CultivationSopSteps_" +
-                "OrganizationId_SopId_Sequence");
-
-        builder.HasIndex(step =>
-                new
-                {
-                    step.OrganizationId,
                     step.PlannedDayOffset
                 })
             .HasDatabaseName(
                 "IX_CultivationSopSteps_" +
                 "OrganizationId_PlannedDayOffset");
+
+        /*
+         * Keunikan OrganizationId + CultivationSopId +
+         * Sequence tidak dimodelkan sebagai unique index EF.
+         *
+         * PostgreSQL menerapkannya sebagai deferrable unique
+         * constraint agar beberapa langkah dapat bertukar urutan
+         * dalam satu transaksi tanpa circular dependency EF Core.
+         */
 
         builder.HasOne<Organization>()
             .WithMany()
