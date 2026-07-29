@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.MasterData.CommodityCategories;
 using SiPacul.Api.Endpoints.Organizations;
 using SiPacul.Application;
 using SiPacul.Infrastructure;
@@ -21,6 +22,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapOrganizationEndpoints();
+app.MapCommodityCategoryEndpoints();
 
 app.Run();
 
