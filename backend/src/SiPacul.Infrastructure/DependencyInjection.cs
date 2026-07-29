@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SiPacul.Application.Common.Persistence;
+using SiPacul.Application.MasterData.Commodities.Persistence;
 using SiPacul.Application.MasterData.CommodityCategories.Persistence;
 using SiPacul.Application.Organizations.Persistence;
 using SiPacul.Infrastructure.Data;
@@ -52,6 +53,10 @@ public static class DependencyInjection
         services.AddScoped<
             ICommodityCategoryRepository,
             CommodityCategoryRepository>();
+
+        services.AddScoped<
+            ICommodityRepository,
+            CommodityRepository>();
 
         services.AddScoped<
             IUnitOfWork,
