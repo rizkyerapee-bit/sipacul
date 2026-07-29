@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.Cultivation.Sops;
 using SiPacul.Api.Endpoints.MasterData.Commodities;
 using SiPacul.Api.Endpoints.MasterData.CommodityCategories;
 using SiPacul.Api.Endpoints.Organizations;
@@ -25,6 +26,7 @@ app.UseHttpsRedirection();
 app.MapOrganizationEndpoints();
 app.MapCommodityCategoryEndpoints();
 app.MapCommodityEndpoints();
+app.MapCultivationSopEndpoints();
 
 app.Run();
 
