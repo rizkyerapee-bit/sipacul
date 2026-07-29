@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+using SiPacul.Application.MasterData.CommodityCategories.Services;
 using SiPacul.Application.Organizations.Services;
 
 namespace SiPacul.Application;
@@ -11,6 +12,10 @@ public static class DependencyInjection
         services.AddScoped<
             IOrganizationService,
             OrganizationService>();
+
+        services.AddScoped<
+            ICommodityCategoryService,
+            CommodityCategoryService>();
 
         return services;
     }
