@@ -15,6 +15,16 @@ public sealed class LandPlotConfiguration :
 
         builder.HasKey(plot => plot.Id);
 
+        builder.HasAlternateKey(plot =>
+                new
+                {
+                    plot.OrganizationId,
+                    plot.LandId,
+                    plot.Id
+                })
+            .HasName(
+                "AK_LandPlots_OrganizationId_LandId_Id");
+
         builder.Property(plot => plot.Id)
             .ValueGeneratedNever();
 
@@ -39,8 +49,7 @@ public sealed class LandPlotConfiguration :
         builder.Property(plot => plot.AreaUnit)
             .IsRequired();
 
-        builder.Property(plot =>
-                plot.GeneralCondition)
+        builder.Property(plot => plot.GeneralCondition)
             .HasMaxLength(
                 LandPlot.MaxGeneralConditionLength);
 
