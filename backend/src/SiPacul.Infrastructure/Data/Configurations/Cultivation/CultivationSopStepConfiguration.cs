@@ -15,6 +15,17 @@ public sealed class CultivationSopStepConfiguration :
 
         builder.HasKey(step => step.Id);
 
+        builder.HasAlternateKey(step =>
+                new
+                {
+                    step.OrganizationId,
+                    step.CultivationSopId,
+                    step.Id
+                })
+            .HasName(
+                "AK_CultivationSopSteps_" +
+                "OrganizationId_CultivationSopId_Id");
+
         builder.Property(step => step.Id)
             .ValueGeneratedNever();
 

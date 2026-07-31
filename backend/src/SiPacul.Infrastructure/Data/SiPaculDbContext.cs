@@ -32,6 +32,14 @@ public sealed class SiPaculDbContext : DbContext
     public DbSet<CropCycle> CropCycles =>
         Set<CropCycle>();
 
+    public DbSet<CultivationActivity>
+        CultivationActivities =>
+        Set<CultivationActivity>();
+
+    public DbSet<CultivationActivityResource>
+        CultivationActivityResources =>
+        Set<CultivationActivityResource>();
+
     public DbSet<Land> Lands =>
         Set<Land>();
 
