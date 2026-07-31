@@ -1,3 +1,4 @@
+using SiPacul.Application.Cultivation.Activities.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -72,6 +73,10 @@ public static class DependencyInjection
         services.AddScoped<
             ICropCycleRepository,
             CropCycleRepository>();
+
+        services.AddScoped<
+            ICultivationActivityRepository,
+            CultivationActivityRepository>();
 
         services.AddScoped<
             IUnitOfWork,

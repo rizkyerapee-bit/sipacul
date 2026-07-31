@@ -1,3 +1,5 @@
+using SiPacul.Application.Cultivation.Activities;
+using SiPacul.Application.Cultivation.Activities.Persistence;
 using SiPacul.Application.Common.Persistence;
 using SiPacul.Application.Cultivation.CropCycles.Contracts;
 using SiPacul.Application.Cultivation.CropCycles.Mappings;
@@ -32,13 +34,18 @@ public sealed class CropCycleService :
 
     private readonly IUnitOfWork _unitOfWork;
 
+    private readonly ICultivationActivityRepository?
+        _cultivationActivityRepository;
+
     public CropCycleService(
         ICropCycleRepository cropCycleRepository,
         IOrganizationRepository organizationRepository,
         ICommodityRepository commodityRepository,
         ICultivationSopRepository cultivationSopRepository,
         ILandRepository landRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICultivationActivityRepository?
+            cultivationActivityRepository = null)
     {
         _cropCycleRepository = cropCycleRepository;
         _organizationRepository =
@@ -48,6 +55,8 @@ public sealed class CropCycleService :
             cultivationSopRepository;
         _landRepository = landRepository;
         _unitOfWork = unitOfWork;
+        _cultivationActivityRepository =
+            cultivationActivityRepository;
     }
 
     public async Task<Result<CropCycleResponse>> CreateAsync(
@@ -555,6 +564,19 @@ public sealed class CropCycleService :
 
         var cropCycle = cropCycleResult.Value;
 
+        if (_cultivationActivityRepository is not null &&
+            await _cultivationActivityRepository
+                .HasInProgressActivitiesAsync(
+                    organizationId,
+                    cropCycleId,
+                    cancellationToken))
+        {
+            return Result<CropCycleResponse>.Failure(
+                CultivationActivityErrors
+                    .CropCycleHasInProgressActivities(
+                        cropCycleId));
+        }
+
         try
         {
             cropCycle.Complete(
@@ -611,6 +633,19 @@ public sealed class CropCycleService :
         }
 
         var cropCycle = cropCycleResult.Value;
+
+        if (_cultivationActivityRepository is not null &&
+            await _cultivationActivityRepository
+                .HasInProgressActivitiesAsync(
+                    organizationId,
+                    cropCycleId,
+                    cancellationToken))
+        {
+            return Result<CropCycleResponse>.Failure(
+                CultivationActivityErrors
+                    .CropCycleHasInProgressActivities(
+                        cropCycleId));
+        }
 
         try
         {

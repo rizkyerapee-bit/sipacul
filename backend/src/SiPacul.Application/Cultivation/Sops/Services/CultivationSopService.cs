@@ -1,4 +1,6 @@
-﻿using SiPacul.Application.Common.Persistence;
+using SiPacul.Application.Cultivation.Activities;
+using SiPacul.Application.Cultivation.Activities.Persistence;
+using SiPacul.Application.Common.Persistence;
 using SiPacul.Application.Cultivation.Sops.Contracts;
 using SiPacul.Application.Cultivation.Sops.Mappings;
 using SiPacul.Application.Cultivation.Sops.Persistence;
@@ -23,11 +25,16 @@ public sealed class CultivationSopService :
 
     private readonly IUnitOfWork _unitOfWork;
 
+    private readonly ICultivationActivityRepository?
+        _cultivationActivityRepository;
+
     public CultivationSopService(
         ICultivationSopRepository cultivationSopRepository,
         ICommodityRepository commodityRepository,
         IOrganizationRepository organizationRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICultivationActivityRepository?
+            cultivationActivityRepository = null)
     {
         _cultivationSopRepository =
             cultivationSopRepository;
@@ -39,6 +46,9 @@ public sealed class CultivationSopService :
             organizationRepository;
 
         _unitOfWork = unitOfWork;
+
+        _cultivationActivityRepository =
+            cultivationActivityRepository;
     }
 
     public async Task<Result<CultivationSopResponse>>
@@ -567,6 +577,20 @@ public sealed class CultivationSopService :
                 CultivationSopErrors.StepNotFound(
                     cultivationSopId,
                     stepId));
+        }
+
+        if (_cultivationActivityRepository is not null &&
+            await _cultivationActivityRepository
+                .HasAnyActivityForSopStepAsync(
+                    organizationId,
+                    cultivationSopId,
+                    stepId,
+                    cancellationToken))
+        {
+            return Result<CultivationSopResponse>.Failure(
+                CultivationActivityErrors
+                    .SopStepHistoricalReferenceExists(
+                        stepId));
         }
 
         cultivationSop.RemoveStep(stepId);
