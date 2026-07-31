@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SiPacul.Application.Cultivation.CropCycles.Services;
 using SiPacul.Application.Cultivation.Sops.Services;
 using SiPacul.Application.Lands.Services;
 using SiPacul.Application.MasterData.Commodities.Services;
@@ -31,6 +32,10 @@ public static class DependencyInjection
         services.AddScoped<
             ILandService,
             LandService>();
+
+        services.AddScoped<
+            ICropCycleService,
+            CropCycleService>();
 
         return services;
     }

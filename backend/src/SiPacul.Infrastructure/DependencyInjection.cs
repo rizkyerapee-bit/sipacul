@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SiPacul.Application.Common.Persistence;
+using SiPacul.Application.Cultivation.CropCycles.Persistence;
 using SiPacul.Application.Cultivation.Sops.Persistence;
 using SiPacul.Application.Lands.Persistence;
 using SiPacul.Application.MasterData.Commodities.Persistence;
@@ -67,6 +68,10 @@ public static class DependencyInjection
         services.AddScoped<
             ILandRepository,
             LandRepository>();
+
+        services.AddScoped<
+            ICropCycleRepository,
+            CropCycleRepository>();
 
         services.AddScoped<
             IUnitOfWork,

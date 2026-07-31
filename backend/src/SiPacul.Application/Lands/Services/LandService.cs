@@ -1,4 +1,6 @@
 using SiPacul.Application.Common.Persistence;
+using SiPacul.Application.Cultivation.CropCycles;
+using SiPacul.Application.Cultivation.CropCycles.Persistence;
 using SiPacul.Application.Lands.Contracts;
 using SiPacul.Application.Lands.Mappings;
 using SiPacul.Application.Lands.Persistence;
@@ -13,6 +15,9 @@ public sealed class LandService :
 {
     private readonly ILandRepository _landRepository;
 
+    private readonly ICropCycleRepository
+        _cropCycleRepository;
+
     private readonly IOrganizationRepository
         _organizationRepository;
 
@@ -20,10 +25,12 @@ public sealed class LandService :
 
     public LandService(
         ILandRepository landRepository,
+        ICropCycleRepository cropCycleRepository,
         IOrganizationRepository organizationRepository,
         IUnitOfWork unitOfWork)
     {
         _landRepository = landRepository;
+        _cropCycleRepository = cropCycleRepository;
         _organizationRepository =
             organizationRepository;
         _unitOfWork = unitOfWork;
@@ -526,6 +533,19 @@ public sealed class LandService :
                     plotId));
         }
 
+        if (await _cropCycleRepository
+            .HasAnyCycleForPlotAsync(
+                organizationId,
+                landId,
+                plotId,
+                cancellationToken))
+        {
+            return Result<LandResponse>.Failure(
+                CropCycleErrors
+                    .HistoricalReferenceExists(
+                        plotId));
+        }
+
         land.RemovePlot(plotId);
 
         await _unitOfWork.SaveChangesAsync(
@@ -600,6 +620,19 @@ public sealed class LandService :
         }
         else
         {
+            if (land.IsActive &&
+                await _cropCycleRepository
+                    .HasActiveCycleForLandAsync(
+                        organizationId,
+                        landId,
+                        cancellationToken))
+            {
+                return Result<LandResponse>.Failure(
+                    CropCycleErrors.ActiveReferenceExists(
+                        "Land",
+                        landId));
+            }
+
             land.Deactivate();
         }
 
@@ -666,6 +699,20 @@ public sealed class LandService :
         }
         else
         {
+            if (plot.IsActive &&
+                await _cropCycleRepository
+                    .HasActiveCycleForPlotAsync(
+                        organizationId,
+                        landId,
+                        plotId,
+                        cancellationToken))
+            {
+                return Result<LandResponse>.Failure(
+                    CropCycleErrors.ActiveReferenceExists(
+                        "Land plot",
+                        plotId));
+            }
+
             land.DeactivatePlot(plotId);
         }
 

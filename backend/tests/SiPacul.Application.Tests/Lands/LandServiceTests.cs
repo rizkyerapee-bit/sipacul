@@ -1,9 +1,12 @@
 using SiPacul.Application.Common.Persistence;
+using SiPacul.Application.Cultivation.CropCycles;
+using SiPacul.Application.Cultivation.CropCycles.Persistence;
 using SiPacul.Application.Lands;
 using SiPacul.Application.Lands.Contracts;
 using SiPacul.Application.Lands.Persistence;
 using SiPacul.Application.Lands.Services;
 using SiPacul.Application.Organizations.Persistence;
+using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Lands;
 using SiPacul.Domain.Entities.Organizations;
 using SiPacul.Shared.Results;
@@ -900,13 +903,137 @@ public sealed class LandServiceTests
         Assert.Equal(0, unitOfWork.SaveCount);
     }
 
+    [Fact]
+    public async Task Deactivate_WithActiveCropCycle_ShouldReturnConflict()
+    {
+        var organization = CreateOrganization();
+        var land = CreateLand(organization.Id);
+
+        var plot = land.AddPlot(
+            "PTK-01",
+            "Petak Satu",
+            5_000,
+            AreaUnit.SquareMeter,
+            null,
+            null);
+
+        var cropCycle = CreateCropCycle(
+            organization.Id,
+            land.Id,
+            plot.Id);
+
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                new FakeLandRepository(land),
+                new FakeOrganizationRepository(
+                    organization),
+                unitOfWork,
+                new FakeCropCycleRepository(
+                    cropCycle))
+            .DeactivateAsync(
+                organization.Id,
+                land.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            CropCycleErrors.ActiveReferenceExistsCode,
+            result.Error.Code);
+        Assert.True(land.IsActive);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task DeactivatePlot_WithActiveCropCycle_ShouldReturnConflict()
+    {
+        var organization = CreateOrganization();
+        var land = CreateLand(organization.Id);
+
+        var plot = land.AddPlot(
+            "PTK-01",
+            "Petak Satu",
+            5_000,
+            AreaUnit.SquareMeter,
+            null,
+            null);
+
+        var cropCycle = CreateCropCycle(
+            organization.Id,
+            land.Id,
+            plot.Id);
+
+        var result = await CreateService(
+                new FakeLandRepository(land),
+                new FakeOrganizationRepository(
+                    organization),
+                new FakeUnitOfWork(),
+                new FakeCropCycleRepository(
+                    cropCycle))
+            .DeactivatePlotAsync(
+                organization.Id,
+                land.Id,
+                plot.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            CropCycleErrors.ActiveReferenceExistsCode,
+            result.Error.Code);
+        Assert.True(plot.IsActive);
+    }
+
+    [Fact]
+    public async Task RemovePlot_WithHistoricalCropCycle_ShouldReturnConflict()
+    {
+        var organization = CreateOrganization();
+        var land = CreateLand(organization.Id);
+
+        var plot = land.AddPlot(
+            "PTK-01",
+            "Petak Satu",
+            5_000,
+            AreaUnit.SquareMeter,
+            null,
+            null);
+
+        var cropCycle = CreateCropCycle(
+            organization.Id,
+            land.Id,
+            plot.Id);
+
+        cropCycle.Cancel("Rencana dibatalkan");
+
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                new FakeLandRepository(land),
+                new FakeOrganizationRepository(
+                    organization),
+                unitOfWork,
+                new FakeCropCycleRepository(
+                    cropCycle))
+            .RemovePlotAsync(
+                organization.Id,
+                land.Id,
+                plot.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            CropCycleErrors.HistoricalReferenceExistsCode,
+            result.Error.Code);
+        Assert.Single(land.Plots);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
     private static LandService CreateService(
         ILandRepository landRepository,
         IOrganizationRepository organizationRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICropCycleRepository? cropCycleRepository = null)
     {
         return new LandService(
             landRepository,
+            cropCycleRepository ??
+                new FakeCropCycleRepository(),
             organizationRepository,
             unitOfWork);
     }
@@ -954,6 +1081,26 @@ public sealed class LandServiceTests
             null,
             null,
             null,
+            null);
+    }
+
+    private static CropCycle CreateCropCycle(
+        Guid organizationId,
+        Guid landId,
+        Guid landPlotId)
+    {
+        return CropCycle.Create(
+            organizationId,
+            "SC-PADI-001",
+            "Musim Tanam Padi",
+            Guid.NewGuid(),
+            null,
+            landId,
+            landPlotId,
+            4_000,
+            AreaUnit.SquareMeter,
+            new DateOnly(2027, 1, 1),
+            new DateOnly(2027, 5, 1),
             null);
     }
 
@@ -1102,6 +1249,174 @@ public sealed class LandServiceTests
             Organization organization)
         {
             _organizations.Add(organization);
+        }
+    }
+
+    private sealed class FakeCropCycleRepository :
+        ICropCycleRepository
+    {
+        private readonly List<CropCycle> _cropCycles;
+
+        public FakeCropCycleRepository(
+            params CropCycle[] cropCycles)
+        {
+            _cropCycles = cropCycles.ToList();
+        }
+
+        public Task<IReadOnlyList<CropCycle>> GetAllAsync(
+            Guid organizationId,
+            CropCycleStatus? status = null,
+            Guid? commodityId = null,
+            Guid? landId = null,
+            Guid? landPlotId = null,
+            DateOnly? plannedStartFrom = null,
+            DateOnly? plannedStartTo = null,
+            CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<CropCycle> result =
+                _cropCycles
+                    .Where(cropCycle =>
+                        cropCycle.OrganizationId ==
+                            organizationId &&
+                        !cropCycle.IsDeleted)
+                    .ToArray();
+
+            return Task.FromResult(result);
+        }
+
+        public Task<CropCycle?> GetByIdAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Find(organizationId, cropCycleId));
+        }
+
+        public Task<CropCycle?> GetByIdForUpdateAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Find(organizationId, cropCycleId));
+        }
+
+        public Task<bool> CodeExistsAsync(
+            Guid organizationId,
+            string code,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                _cropCycles.Any(cropCycle =>
+                    cropCycle.OrganizationId ==
+                        organizationId &&
+                    cropCycle.Code == code &&
+                    !cropCycle.IsDeleted));
+        }
+
+        public Task<bool> HasScheduleConflictAsync(
+            Guid organizationId,
+            Guid landId,
+            Guid landPlotId,
+            DateOnly plannedStartDate,
+            DateOnly expectedHarvestDate,
+            Guid? excludedCropCycleId = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
+
+        public Task<bool> HasInProgressCycleAsync(
+            Guid organizationId,
+            Guid landId,
+            Guid landPlotId,
+            Guid? excludedCropCycleId = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                _cropCycles.Any(cropCycle =>
+                    cropCycle.OrganizationId ==
+                        organizationId &&
+                    cropCycle.LandId == landId &&
+                    cropCycle.LandPlotId ==
+                        landPlotId &&
+                    cropCycle.Status ==
+                        CropCycleStatus.InProgress &&
+                    !cropCycle.IsDeleted));
+        }
+
+        public Task<bool> HasActiveCycleForLandAsync(
+            Guid organizationId,
+            Guid landId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                _cropCycles.Any(cropCycle =>
+                    cropCycle.OrganizationId ==
+                        organizationId &&
+                    cropCycle.LandId == landId &&
+                    IsActive(cropCycle)));
+        }
+
+        public Task<bool> HasActiveCycleForPlotAsync(
+            Guid organizationId,
+            Guid landId,
+            Guid landPlotId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                _cropCycles.Any(cropCycle =>
+                    cropCycle.OrganizationId ==
+                        organizationId &&
+                    cropCycle.LandId == landId &&
+                    cropCycle.LandPlotId ==
+                        landPlotId &&
+                    IsActive(cropCycle)));
+        }
+
+        public Task<bool> HasAnyCycleForPlotAsync(
+            Guid organizationId,
+            Guid landId,
+            Guid landPlotId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                _cropCycles.Any(cropCycle =>
+                    cropCycle.OrganizationId ==
+                        organizationId &&
+                    cropCycle.LandId == landId &&
+                    cropCycle.LandPlotId ==
+                        landPlotId &&
+                    !cropCycle.IsDeleted));
+        }
+
+        public void Add(CropCycle cropCycle)
+        {
+            _cropCycles.Add(cropCycle);
+        }
+
+        private CropCycle? Find(
+            Guid organizationId,
+            Guid cropCycleId)
+        {
+            return _cropCycles.SingleOrDefault(cropCycle =>
+                cropCycle.OrganizationId ==
+                    organizationId &&
+                cropCycle.Id == cropCycleId &&
+                !cropCycle.IsDeleted);
+        }
+
+        private static bool IsActive(
+            CropCycle cropCycle)
+        {
+            return !cropCycle.IsDeleted &&
+                (
+                    cropCycle.Status ==
+                        CropCycleStatus.Planned ||
+                    cropCycle.Status ==
+                        CropCycleStatus.InProgress
+                );
         }
     }
 
