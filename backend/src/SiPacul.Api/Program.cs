@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.Cultivation.CropCycles;
 using SiPacul.Api.Endpoints.Cultivation.Sops;
 using SiPacul.Api.Endpoints.Lands;
 using SiPacul.Api.Endpoints.MasterData.Commodities;
@@ -29,6 +30,7 @@ app.MapCommodityCategoryEndpoints();
 app.MapCommodityEndpoints();
 app.MapCultivationSopEndpoints();
 app.MapLandEndpoints();
+app.MapCropCycleEndpoints();
 
 app.Run();
 
