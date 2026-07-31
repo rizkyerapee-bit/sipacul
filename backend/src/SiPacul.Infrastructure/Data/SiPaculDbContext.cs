@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SiPacul.Domain.Entities.Cultivation;
+using SiPacul.Domain.Entities.Lands;
 using SiPacul.Domain.Entities.MasterData;
 using SiPacul.Domain.Entities.Organizations;
 
@@ -27,6 +28,12 @@ public sealed class SiPaculDbContext : DbContext
 
     public DbSet<CultivationSopStep> CultivationSopSteps =>
         Set<CultivationSopStep>();
+
+    public DbSet<Land> Lands =>
+        Set<Land>();
+
+    public DbSet<LandPlot> LandPlots =>
+        Set<LandPlot>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
