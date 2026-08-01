@@ -1,3 +1,5 @@
+using SiPacul.Application.Harvests.Persistence;
+using SiPacul.Application.Harvests;
 using SiPacul.Application.Cultivation.Activities;
 using SiPacul.Application.Cultivation.Activities.Persistence;
 using SiPacul.Application.Common.Persistence;
@@ -37,6 +39,9 @@ public sealed class CropCycleService :
     private readonly ICultivationActivityRepository?
         _cultivationActivityRepository;
 
+    private readonly IHarvestBatchRepository?
+        _harvestBatchRepository;
+
     public CropCycleService(
         ICropCycleRepository cropCycleRepository,
         IOrganizationRepository organizationRepository,
@@ -45,7 +50,9 @@ public sealed class CropCycleService :
         ILandRepository landRepository,
         IUnitOfWork unitOfWork,
         ICultivationActivityRepository?
-            cultivationActivityRepository = null)
+            cultivationActivityRepository = null,
+        IHarvestBatchRepository?
+            harvestBatchRepository = null)
     {
         _cropCycleRepository = cropCycleRepository;
         _organizationRepository =
@@ -57,6 +64,9 @@ public sealed class CropCycleService :
         _unitOfWork = unitOfWork;
         _cultivationActivityRepository =
             cultivationActivityRepository;
+
+        _harvestBatchRepository =
+            harvestBatchRepository;
     }
 
     public async Task<Result<CropCycleResponse>> CreateAsync(
@@ -577,6 +587,19 @@ public sealed class CropCycleService :
                         cropCycleId));
         }
 
+        if (_harvestBatchRepository is not null &&
+            await _harvestBatchRepository
+                .HasDraftBatchesAsync(
+                    organizationId,
+                    cropCycleId,
+                    cancellationToken))
+        {
+            return Result<CropCycleResponse>.Failure(
+                HarvestBatchErrors
+                    .CropCycleHasDraftHarvests(
+                        cropCycleId));
+        }
+
         try
         {
             cropCycle.Complete(
@@ -644,6 +667,19 @@ public sealed class CropCycleService :
             return Result<CropCycleResponse>.Failure(
                 CultivationActivityErrors
                     .CropCycleHasInProgressActivities(
+                        cropCycleId));
+        }
+
+        if (_harvestBatchRepository is not null &&
+            await _harvestBatchRepository
+                .HasNonCancelledBatchesAsync(
+                    organizationId,
+                    cropCycleId,
+                    cancellationToken))
+        {
+            return Result<CropCycleResponse>.Failure(
+                HarvestBatchErrors
+                    .CropCycleHasNonCancelledHarvests(
                         cropCycleId));
         }
 
