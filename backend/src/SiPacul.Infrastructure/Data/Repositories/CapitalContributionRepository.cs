@@ -151,6 +151,72 @@ public sealed class CapitalContributionRepository :
                 cancellationToken);
     }
 
+    public Task<CapitalContribution?>
+        GetContributorIdentityAsync(
+            Guid organizationId,
+            CapitalContributorRole contributorRole,
+            string contributorCode,
+            Guid? excludedContributionId = null,
+            CancellationToken cancellationToken = default)
+    {
+        IQueryable<CapitalContribution> query =
+            _dbContext.CapitalContributions
+                .AsNoTracking()
+                .Where(contribution =>
+                    contribution.OrganizationId ==
+                        organizationId &&
+                    contribution.ContributorRole ==
+                        contributorRole &&
+                    contribution.ContributorCode ==
+                        contributorCode &&
+                    !contribution.IsDeleted);
+
+        if (excludedContributionId.HasValue)
+        {
+            query = query.Where(contribution =>
+                contribution.Id !=
+                    excludedContributionId.Value);
+        }
+
+        return query
+            .OrderBy(contribution =>
+                contribution.CreatedAt)
+            .ThenBy(contribution =>
+                contribution.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public Task<CapitalContribution?>
+        GetPartnerIdentityAsync(
+            Guid organizationId,
+            Guid? excludedContributionId = null,
+            CancellationToken cancellationToken = default)
+    {
+        IQueryable<CapitalContribution> query =
+            _dbContext.CapitalContributions
+                .AsNoTracking()
+                .Where(contribution =>
+                    contribution.OrganizationId ==
+                        organizationId &&
+                    contribution.ContributorRole ==
+                        CapitalContributorRole.Partner &&
+                    !contribution.IsDeleted);
+
+        if (excludedContributionId.HasValue)
+        {
+            query = query.Where(contribution =>
+                contribution.Id !=
+                    excludedContributionId.Value);
+        }
+
+        return query
+            .OrderBy(contribution =>
+                contribution.CreatedAt)
+            .ThenBy(contribution =>
+                contribution.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public void Add(CapitalContribution contribution)
     {
         ArgumentNullException.ThrowIfNull(contribution);

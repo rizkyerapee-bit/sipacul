@@ -33,5 +33,18 @@ public interface ICapitalContributionRepository
         string code,
         CancellationToken cancellationToken = default);
 
+    Task<CapitalContribution?>
+        GetContributorIdentityAsync(
+            Guid organizationId,
+            CapitalContributorRole contributorRole,
+            string contributorCode,
+            Guid? excludedContributionId = null,
+            CancellationToken cancellationToken = default);
+
+    Task<CapitalContribution?> GetPartnerIdentityAsync(
+        Guid organizationId,
+        Guid? excludedContributionId = null,
+        CancellationToken cancellationToken = default);
+
     void Add(CapitalContribution contribution);
 }

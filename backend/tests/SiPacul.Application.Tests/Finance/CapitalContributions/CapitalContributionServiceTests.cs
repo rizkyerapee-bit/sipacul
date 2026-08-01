@@ -1141,6 +1141,62 @@ public sealed class CapitalContributionServiceTests
                     !contribution.IsDeleted));
         }
 
+        public Task<CapitalContribution?>
+            GetContributorIdentityAsync(
+                Guid organizationId,
+                CapitalContributorRole contributorRole,
+                string contributorCode,
+                Guid? excludedContributionId = null,
+                CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Contributions
+                    .Where(contribution =>
+                        contribution.OrganizationId ==
+                            organizationId &&
+                        contribution.ContributorRole ==
+                            contributorRole &&
+                        contribution.ContributorCode ==
+                            contributorCode &&
+                        !contribution.IsDeleted &&
+                        (
+                            !excludedContributionId.HasValue ||
+                            contribution.Id !=
+                                excludedContributionId.Value
+                        ))
+                    .OrderBy(contribution =>
+                        contribution.CreatedAt)
+                    .ThenBy(contribution =>
+                        contribution.Id)
+                    .FirstOrDefault());
+        }
+
+        public Task<CapitalContribution?>
+            GetPartnerIdentityAsync(
+                Guid organizationId,
+                Guid? excludedContributionId = null,
+                CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                Contributions
+                    .Where(contribution =>
+                        contribution.OrganizationId ==
+                            organizationId &&
+                        contribution.ContributorRole ==
+                            CapitalContributorRole.Partner &&
+                        !contribution.IsDeleted &&
+                        (
+                            !excludedContributionId.HasValue ||
+                            contribution.Id !=
+                                excludedContributionId.Value
+                        ))
+                    .OrderBy(contribution =>
+                        contribution.CreatedAt)
+                    .ThenBy(contribution =>
+                        contribution.Id)
+                    .FirstOrDefault());
+        }
+
         public void Add(CapitalContribution contribution)
         {
             Contributions.Add(contribution);

@@ -114,6 +114,18 @@ public sealed class CapitalContributionService :
                             contribution.Code));
         }
 
+        var identityError =
+            await ValidateContributorIdentityAsync(
+                contribution,
+                null,
+                cancellationToken);
+
+        if (identityError is not null)
+        {
+            return Result<CapitalContributionResponse>
+                .Failure(identityError);
+        }
+
         _contributionRepository.Add(contribution);
 
         await _unitOfWork.SaveChangesAsync(
@@ -284,6 +296,44 @@ public sealed class CapitalContributionService :
 
         var contribution =
             contextResult.Value.Contribution;
+
+        CapitalContribution identityCandidate;
+
+        try
+        {
+            identityCandidate =
+                CapitalContribution.Create(
+                    organizationId,
+                    cropCycleId,
+                    contribution.Code,
+                    request.ContributionDate,
+                    request.ContributorCode,
+                    request.ContributorName,
+                    request.ContributorRole,
+                    request.Amount,
+                    request.PaymentMethod,
+                    request.ReferenceNumber,
+                    request.Notes);
+        }
+        catch (ArgumentException exception)
+        {
+            return Result<CapitalContributionResponse>
+                .Failure(
+                    CapitalContributionErrors.Validation(
+                        exception.Message));
+        }
+
+        var identityError =
+            await ValidateContributorIdentityAsync(
+                identityCandidate,
+                contribution.Id,
+                cancellationToken);
+
+        if (identityError is not null)
+        {
+            return Result<CapitalContributionResponse>
+                .Failure(identityError);
+        }
 
         var previousDate = contribution.ContributionDate;
         var previousContributorCode =
@@ -537,6 +587,76 @@ public sealed class CapitalContributionService :
             new MutationContext(
                 parentResult.Value,
                 contribution));
+    }
+
+    private async Task<Error?>
+        ValidateContributorIdentityAsync(
+            CapitalContribution contribution,
+            Guid? excludedContributionId,
+            CancellationToken cancellationToken)
+    {
+        var existingIdentity =
+            await _contributionRepository
+                .GetContributorIdentityAsync(
+                    contribution.OrganizationId,
+                    contribution.ContributorRole,
+                    contribution.ContributorCode,
+                    excludedContributionId,
+                    cancellationToken);
+
+        if (existingIdentity is not null &&
+            !string.Equals(
+                existingIdentity.ContributorName,
+                contribution.ContributorName,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return CapitalContributionErrors
+                .ContributorIdentityConflict(
+                    contribution.ContributorRole,
+                    contribution.ContributorCode,
+                    existingIdentity.ContributorName);
+        }
+
+        if (contribution.ContributorRole !=
+            CapitalContributorRole.Partner)
+        {
+            return null;
+        }
+
+        var existingPartner =
+            await _contributionRepository
+                .GetPartnerIdentityAsync(
+                    contribution.OrganizationId,
+                    excludedContributionId,
+                    cancellationToken);
+
+        if (existingPartner is null)
+        {
+            return null;
+        }
+
+        var sameCode =
+            string.Equals(
+                existingPartner.ContributorCode,
+                contribution.ContributorCode,
+                StringComparison.OrdinalIgnoreCase);
+
+        var sameName =
+            string.Equals(
+                existingPartner.ContributorName,
+                contribution.ContributorName,
+                StringComparison.OrdinalIgnoreCase);
+
+        if (sameCode && sameName)
+        {
+            return null;
+        }
+
+        return CapitalContributionErrors
+            .ContributorIdentityConflict(
+                contribution.ContributorRole,
+                contribution.ContributorCode,
+                existingPartner.ContributorName);
     }
 
     private static Error? ValidateContributionDate(

@@ -1,3 +1,4 @@
+using SiPacul.Domain.Entities.Finance;
 using SiPacul.Shared.Results;
 
 namespace SiPacul.Application.Finance.CapitalContributions;
@@ -24,6 +25,9 @@ public static class CapitalContributionErrors
 
     public const string DateOutOfRangeCode =
         "CapitalContributions.DateOutOfRange";
+
+    public const string ContributorIdentityConflictCode =
+        "CapitalContributions.ContributorIdentityConflict";
 
     public const string FinalizedSettlementExistsCode =
         "CapitalContributions.FinalizedSettlementExists";
@@ -87,6 +91,19 @@ public static class CapitalContributionErrors
             $"'{contributionDate:yyyy-MM-dd}' must be between " +
             $"'{earliestDate:yyyy-MM-dd}' and " +
             $"'{latestDate:yyyy-MM-dd}'.");
+    }
+
+    public static Error ContributorIdentityConflict(
+        CapitalContributorRole contributorRole,
+        string contributorCode,
+        string contributorName)
+    {
+        return Error.Conflict(
+            ContributorIdentityConflictCode,
+            $"Contributor identity '{contributorRole}:" +
+            $"{contributorCode}' conflicts with the " +
+            $"registered name '{contributorName}' in this " +
+            "organization.");
     }
 
     public static Error FinalizedSettlementExists(
