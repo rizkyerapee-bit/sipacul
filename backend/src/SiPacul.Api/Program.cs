@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.Finance.Expenses;
 using SiPacul.Api.Endpoints.Sales;
 using SiPacul.Api.Endpoints.Harvests;
 using SiPacul.Api.Endpoints.Cultivation.Activities;
@@ -37,6 +38,7 @@ app.MapCropCycleEndpoints();
 app.MapCultivationActivityEndpoints();
 app.MapHarvestBatchEndpoints();
 app.MapSaleEndpoints();
+app.MapCultivationExpenseEndpoints();
 
 app.Run();
 
