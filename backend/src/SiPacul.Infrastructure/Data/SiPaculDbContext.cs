@@ -55,6 +55,9 @@ public sealed class SiPaculDbContext : DbContext
     public DbSet<CultivationExpense> CultivationExpenses =>
         Set<CultivationExpense>();
 
+    public DbSet<CapitalContribution> CapitalContributions =>
+        Set<CapitalContribution>();
+
     public DbSet<Land> Lands =>
         Set<Land>();
 
