@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SiPacul.Domain.Entities.Finance;
 using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Harvests;
 using SiPacul.Domain.Entities.Lands;
@@ -50,6 +51,9 @@ public sealed class SiPaculDbContext : DbContext
 
     public DbSet<SaleLine> SaleLines =>
         Set<SaleLine>();
+
+    public DbSet<CultivationExpense> CultivationExpenses =>
+        Set<CultivationExpense>();
 
     public DbSet<Land> Lands =>
         Set<Land>();
