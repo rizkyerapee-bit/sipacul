@@ -4,6 +4,7 @@ using SiPacul.Domain.Entities.Harvests;
 using SiPacul.Domain.Entities.Lands;
 using SiPacul.Domain.Entities.MasterData;
 using SiPacul.Domain.Entities.Organizations;
+using SiPacul.Domain.Entities.Sales;
 
 namespace SiPacul.Infrastructure.Data;
 
@@ -43,6 +44,12 @@ public sealed class SiPaculDbContext : DbContext
 
     public DbSet<HarvestBatch> HarvestBatches =>
         Set<HarvestBatch>();
+
+    public DbSet<Sale> Sales =>
+        Set<Sale>();
+
+    public DbSet<SaleLine> SaleLines =>
+        Set<SaleLine>();
 
     public DbSet<Land> Lands =>
         Set<Land>();
