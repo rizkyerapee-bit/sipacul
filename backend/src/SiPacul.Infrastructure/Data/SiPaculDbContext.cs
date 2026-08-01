@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SiPacul.Domain.Entities.Cultivation;
+using SiPacul.Domain.Entities.Harvests;
 using SiPacul.Domain.Entities.Lands;
 using SiPacul.Domain.Entities.MasterData;
 using SiPacul.Domain.Entities.Organizations;
@@ -39,6 +40,9 @@ public sealed class SiPaculDbContext : DbContext
     public DbSet<CultivationActivityResource>
         CultivationActivityResources =>
         Set<CultivationActivityResource>();
+
+    public DbSet<HarvestBatch> HarvestBatches =>
+        Set<HarvestBatch>();
 
     public DbSet<Land> Lands =>
         Set<Land>();
