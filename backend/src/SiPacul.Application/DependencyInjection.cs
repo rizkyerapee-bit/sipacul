@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.CapitalContributions.Services;
 using SiPacul.Application.Finance.Expenses.Services;
 using SiPacul.Application.Sales.Services;
 using SiPacul.Application.Harvests.Services;
@@ -56,6 +57,10 @@ public static class DependencyInjection
         services.AddScoped<
             ICultivationExpenseService,
             CultivationExpenseService>();
+
+        services.AddScoped<
+            ICapitalContributionService,
+            CapitalContributionService>();
 
         return services;
     }
