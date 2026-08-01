@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.Sales;
 using SiPacul.Api.Endpoints.Harvests;
 using SiPacul.Api.Endpoints.Cultivation.Activities;
 using SiPacul.Api.Endpoints.Cultivation.CropCycles;
@@ -35,6 +36,7 @@ app.MapLandEndpoints();
 app.MapCropCycleEndpoints();
 app.MapCultivationActivityEndpoints();
 app.MapHarvestBatchEndpoints();
+app.MapSaleEndpoints();
 
 app.Run();
 
