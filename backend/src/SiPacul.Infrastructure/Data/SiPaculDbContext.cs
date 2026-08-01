@@ -58,6 +58,9 @@ public sealed class SiPaculDbContext : DbContext
     public DbSet<CapitalContribution> CapitalContributions =>
         Set<CapitalContribution>();
 
+    public DbSet<SalePayment> SalePayments =>
+        Set<SalePayment>();
+
     public DbSet<Land> Lands =>
         Set<Land>();
 
