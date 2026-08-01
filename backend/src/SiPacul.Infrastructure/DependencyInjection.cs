@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.Expenses.Persistence;
 using SiPacul.Application.Sales.Persistence;
 using SiPacul.Application.Harvests.Persistence;
 using SiPacul.Application.Cultivation.Activities.Persistence;
@@ -95,6 +96,10 @@ public static class DependencyInjection
         services.AddScoped<
             IUnitOfWork,
             UnitOfWork>();
+
+        services.AddScoped<
+            ICultivationExpenseRepository,
+            CultivationExpenseRepository>();
 
         return services;
     }
