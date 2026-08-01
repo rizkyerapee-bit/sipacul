@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.SalePayments.Persistence;
 using SiPacul.Application.Common.Persistence;
 using SiPacul.Application.Organizations.Persistence;
 using SiPacul.Application.Sales.Contracts;
@@ -21,16 +22,22 @@ public sealed class SaleService : ISaleService
 
     private readonly IUnitOfWork _unitOfWork;
 
+    private readonly ISalePaymentRepository?
+        _salePaymentRepository;
+
     public SaleService(
         ISaleRepository saleRepository,
         ISaleConfirmationProcessor confirmationProcessor,
         IOrganizationRepository organizationRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISalePaymentRepository?
+            salePaymentRepository = null)
     {
         _saleRepository = saleRepository;
         _confirmationProcessor = confirmationProcessor;
         _organizationRepository = organizationRepository;
         _unitOfWork = unitOfWork;
+        _salePaymentRepository = salePaymentRepository;
     }
 
     public async Task<Result<SaleResponse>> CreateAsync(
@@ -558,6 +565,18 @@ public sealed class SaleService : ISaleService
         {
             return Result<SaleResponse>.Failure(
                 saleResult.Error);
+        }
+
+        if (_salePaymentRepository is not null &&
+            await _salePaymentRepository
+                .HasConfirmedPaymentsAsync(
+                    organizationId,
+                    saleId,
+                    cancellationToken))
+        {
+            return Result<SaleResponse>.Failure(
+                SaleErrors.ConfirmedPaymentsExist(
+                    saleId));
         }
 
         try

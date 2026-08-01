@@ -136,4 +136,16 @@ public static class SaleErrors
             "availability changed concurrently. Reload the sale " +
             "and try again.");
     }
+
+    public const string ConfirmedPaymentsExistCode =
+            "Sales.ConfirmedPaymentsExist";
+
+    public static Error ConfirmedPaymentsExist(
+        Guid saleId)
+    {
+        return Error.Conflict(
+            ConfirmedPaymentsExistCode,
+            $"Sale '{saleId}' has confirmed payments. " +
+            "Cancel those payments before cancelling the sale.");
+    }
 }

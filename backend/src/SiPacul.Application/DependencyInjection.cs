@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.SalePayments.Services;
 using SiPacul.Application.Finance.CapitalContributions.Services;
 using SiPacul.Application.Finance.Expenses.Services;
 using SiPacul.Application.Sales.Services;
@@ -61,6 +62,10 @@ public static class DependencyInjection
         services.AddScoped<
             ICapitalContributionService,
             CapitalContributionService>();
+
+        services.AddScoped<
+            ISalePaymentService,
+            SalePaymentService>();
 
         return services;
     }

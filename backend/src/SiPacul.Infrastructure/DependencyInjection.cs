@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.SalePayments.Persistence;
 using SiPacul.Application.Finance.CapitalContributions.Persistence;
 using SiPacul.Application.Finance.Expenses.Persistence;
 using SiPacul.Application.Sales.Persistence;
@@ -105,6 +106,14 @@ public static class DependencyInjection
         services.AddScoped<
             ICapitalContributionRepository,
             CapitalContributionRepository>();
+
+        services.AddScoped<
+            ISalePaymentRepository,
+            SalePaymentRepository>();
+
+        services.AddScoped<
+            ISalePaymentConfirmationProcessor,
+            SalePaymentConfirmationProcessor>();
 
         return services;
     }
