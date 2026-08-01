@@ -1,3 +1,4 @@
+using SiPacul.Application.Sales.Persistence;
 using SiPacul.Application.Harvests.Persistence;
 using SiPacul.Application.Cultivation.Activities.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -82,6 +83,14 @@ public static class DependencyInjection
         services.AddScoped<
             IHarvestBatchRepository,
             HarvestBatchRepository>();
+
+        services.AddScoped<
+            ISaleRepository,
+            SaleRepository>();
+
+        services.AddScoped<
+            ISaleConfirmationProcessor,
+            SaleConfirmationProcessor>();
 
         services.AddScoped<
             IUnitOfWork,

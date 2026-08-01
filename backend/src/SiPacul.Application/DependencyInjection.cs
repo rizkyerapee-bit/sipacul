@@ -1,3 +1,4 @@
+using SiPacul.Application.Sales.Services;
 using SiPacul.Application.Harvests.Services;
 using SiPacul.Application.Cultivation.Activities.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +47,10 @@ public static class DependencyInjection
         services.AddScoped<
             IHarvestBatchService,
             HarvestBatchService>();
+
+        services.AddScoped<
+            ISaleService,
+            SaleService>();
 
         return services;
     }

@@ -3,6 +3,7 @@ using SiPacul.Application.Cultivation.CropCycles.Persistence;
 using SiPacul.Application.Harvests.Contracts;
 using SiPacul.Application.Harvests.Mappings;
 using SiPacul.Application.Harvests.Persistence;
+using SiPacul.Application.Sales.Persistence;
 using SiPacul.Application.Organizations.Persistence;
 using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Harvests;
@@ -22,13 +23,16 @@ public sealed class HarvestBatchService :
     private readonly IOrganizationRepository
         _organizationRepository;
 
+    private readonly ISaleRepository? _saleRepository;
+
     private readonly IUnitOfWork _unitOfWork;
 
     public HarvestBatchService(
         IHarvestBatchRepository harvestBatchRepository,
         ICropCycleRepository cropCycleRepository,
         IOrganizationRepository organizationRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ISaleRepository? saleRepository = null)
     {
         _harvestBatchRepository =
             harvestBatchRepository;
@@ -39,6 +43,8 @@ public sealed class HarvestBatchService :
             organizationRepository;
 
         _unitOfWork = unitOfWork;
+
+        _saleRepository = saleRepository;
     }
 
     public async Task<Result<HarvestBatchResponse>>
@@ -196,9 +202,18 @@ public sealed class HarvestBatchService :
                     filter.QualityGrade),
                 cancellationToken);
 
+        var soldQuantities =
+            await GetConfirmedSoldQuantitiesAsync(
+                organizationId,
+                batches.Select(batch => batch.Id),
+                cancellationToken);
+
         IReadOnlyList<HarvestBatchResponse> responses =
             batches
-                .Select(batch => batch.ToResponse())
+                .Select(batch => batch.ToResponse(
+                    GetSoldQuantity(
+                        soldQuantities,
+                        batch.Id)))
                 .ToArray();
 
         return Result<
@@ -253,8 +268,14 @@ public sealed class HarvestBatchService :
                     harvestBatchId));
         }
 
+        var soldQuantity =
+            await GetConfirmedSoldQuantityAsync(
+                organizationId,
+                harvestBatchId,
+                cancellationToken);
+
         return Result<HarvestBatchResponse>.Success(
-            harvestBatch.ToResponse());
+            harvestBatch.ToResponse(soldQuantity));
     }
 
     public async Task<Result<HarvestBatchResponse>>
@@ -457,6 +478,19 @@ public sealed class HarvestBatchService :
                 contextResult.Error);
         }
 
+        if (_saleRepository is not null &&
+            await _saleRepository
+                .HasActiveConfirmedSaleForHarvestAsync(
+                    organizationId,
+                    harvestBatchId,
+                    cancellationToken))
+        {
+            return Result<HarvestBatchResponse>.Failure(
+                HarvestBatchErrors
+                    .ActiveConfirmedSaleExists(
+                        harvestBatchId));
+        }
+
         try
         {
             contextResult.Value.HarvestBatch.Cancel(
@@ -482,6 +516,62 @@ public sealed class HarvestBatchService :
         return Result<HarvestBatchResponse>.Success(
             contextResult.Value.HarvestBatch
                 .ToResponse());
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, decimal>>
+        GetConfirmedSoldQuantitiesAsync(
+            Guid organizationId,
+            IEnumerable<Guid> harvestBatchIds,
+            CancellationToken cancellationToken)
+    {
+        if (_saleRepository is null)
+        {
+            return new Dictionary<Guid, decimal>();
+        }
+
+        var identifiers = harvestBatchIds
+            .Distinct()
+            .ToArray();
+
+        if (identifiers.Length == 0)
+        {
+            return new Dictionary<Guid, decimal>();
+        }
+
+        return await _saleRepository
+            .GetConfirmedSoldQuantitiesAsync(
+                organizationId,
+                identifiers,
+                cancellationToken);
+    }
+
+    private async Task<decimal>
+        GetConfirmedSoldQuantityAsync(
+            Guid organizationId,
+            Guid harvestBatchId,
+            CancellationToken cancellationToken)
+    {
+        if (_saleRepository is null)
+        {
+            return 0;
+        }
+
+        return await _saleRepository
+            .GetConfirmedSoldQuantityAsync(
+                organizationId,
+                harvestBatchId,
+                cancellationToken);
+    }
+
+    private static decimal GetSoldQuantity(
+        IReadOnlyDictionary<Guid, decimal> soldQuantities,
+        Guid harvestBatchId)
+    {
+        return soldQuantities.TryGetValue(
+            harvestBatchId,
+            out var soldQuantity)
+                ? soldQuantity
+                : 0;
     }
 
     private async Task<Result<CropCycle>>

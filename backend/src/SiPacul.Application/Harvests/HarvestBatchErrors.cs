@@ -34,6 +34,9 @@ public static class HarvestBatchErrors
     public const string CropCycleHasNonCancelledHarvestsCode =
         "HarvestBatches.CropCycleHasNonCancelledHarvests";
 
+    public const string ActiveConfirmedSaleExistsCode =
+        "HarvestBatches.ActiveConfirmedSaleExists";
+
     public static Error Validation(string message)
     {
         return Error.Validation(
@@ -123,5 +126,15 @@ public static class HarvestBatchErrors
             $"Crop cycle '{cropCycleId}' still has active " +
             "harvest history. Cancel all harvest batches " +
             "before cancelling the crop cycle.");
+    }
+
+    public static Error ActiveConfirmedSaleExists(
+        Guid harvestBatchId)
+    {
+        return Error.Conflict(
+            ActiveConfirmedSaleExistsCode,
+            $"Harvest batch '{harvestBatchId}' is referenced " +
+            "by an active confirmed sale. Cancel the sale " +
+            "before cancelling this harvest batch.");
     }
 }
