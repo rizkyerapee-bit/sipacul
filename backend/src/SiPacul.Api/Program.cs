@@ -1,3 +1,4 @@
+using SiPacul.Api.Common.Http;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing;
 using SiPacul.Api.Endpoints.Finance.Profitability;
 using SiPacul.Api.Endpoints.Finance.SalePayments;
@@ -49,6 +50,8 @@ app.MapSalePaymentEndpoints();
 app.MapProfitabilityEndpoints();
 
 app.MapProfitSharingSettlementEndpoints();
+app.UseMiddleware<ProfitSharingSourceLockMiddleware>();
+
 app.Run();
 
 public partial class Program;

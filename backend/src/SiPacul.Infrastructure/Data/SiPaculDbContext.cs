@@ -76,6 +76,275 @@ public sealed class SiPaculDbContext : DbContext
     public DbSet<LandPlot> LandPlots =>
         Set<LandPlot>();
 
+    public override int SaveChanges(
+        bool acceptAllChangesOnSuccess)
+    {
+        EnsureProfitSharingSourcesAreUnlocked();
+
+        return base.SaveChanges(
+            acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return SaveChangesAsync(
+            true,
+            cancellationToken);
+    }
+
+    public override async Task<int> SaveChangesAsync(
+        bool acceptAllChangesOnSuccess,
+        CancellationToken cancellationToken = default)
+    {
+        await EnsureProfitSharingSourcesAreUnlockedAsync(
+            cancellationToken);
+
+        return await base.SaveChangesAsync(
+            acceptAllChangesOnSuccess,
+            cancellationToken);
+    }
+
+    private void EnsureProfitSharingSourcesAreUnlocked()
+    {
+        foreach (var source in GetExpenseSources())
+        {
+            ThrowWhenCycleIsLocked(
+                source.OrganizationId,
+                source.CropCycleId,
+                "CultivationExpenses.FinalizedSettlementExists",
+                "cultivation expense");
+        }
+
+        foreach (var source in GetCapitalSources())
+        {
+            ThrowWhenCycleIsLocked(
+                source.OrganizationId,
+                source.CropCycleId,
+                "CapitalContributions.FinalizedSettlementExists",
+                "capital contribution");
+        }
+
+        foreach (var group in GetPaymentSources()
+            .GroupBy(source => source.OrganizationId))
+        {
+            var saleIds =
+                group
+                    .Select(source => source.SaleId)
+                    .Distinct()
+                    .ToArray();
+
+            var cropCycleIds =
+                Set<SaleLine>()
+                    .AsNoTracking()
+                    .Where(line =>
+                        line.OrganizationId == group.Key &&
+                        saleIds.Contains(line.SaleId))
+                    .Select(line =>
+                        line.CropCycleIdSnapshot)
+                    .Distinct()
+                    .ToArray();
+
+            foreach (var cropCycleId in cropCycleIds)
+            {
+                ThrowWhenCycleIsLocked(
+                    group.Key,
+                    cropCycleId,
+                    "SalePayments.FinalizedSettlementExists",
+                    "sale payment");
+            }
+        }
+    }
+
+    private async Task
+        EnsureProfitSharingSourcesAreUnlockedAsync(
+            CancellationToken cancellationToken)
+    {
+        foreach (var source in GetExpenseSources())
+        {
+            await ThrowWhenCycleIsLockedAsync(
+                source.OrganizationId,
+                source.CropCycleId,
+                "CultivationExpenses.FinalizedSettlementExists",
+                "cultivation expense",
+                cancellationToken);
+        }
+
+        foreach (var source in GetCapitalSources())
+        {
+            await ThrowWhenCycleIsLockedAsync(
+                source.OrganizationId,
+                source.CropCycleId,
+                "CapitalContributions.FinalizedSettlementExists",
+                "capital contribution",
+                cancellationToken);
+        }
+
+        foreach (var group in GetPaymentSources()
+            .GroupBy(source => source.OrganizationId))
+        {
+            var saleIds =
+                group
+                    .Select(source => source.SaleId)
+                    .Distinct()
+                    .ToArray();
+
+            var cropCycleIds =
+                await Set<SaleLine>()
+                    .AsNoTracking()
+                    .Where(line =>
+                        line.OrganizationId == group.Key &&
+                        saleIds.Contains(line.SaleId))
+                    .Select(line =>
+                        line.CropCycleIdSnapshot)
+                    .Distinct()
+                    .ToArrayAsync(cancellationToken);
+
+            foreach (var cropCycleId in cropCycleIds)
+            {
+                await ThrowWhenCycleIsLockedAsync(
+                    group.Key,
+                    cropCycleId,
+                    "SalePayments.FinalizedSettlementExists",
+                    "sale payment",
+                    cancellationToken);
+            }
+        }
+    }
+
+    private IReadOnlyList<CycleSource> GetExpenseSources()
+    {
+        return ChangeTracker
+            .Entries<CultivationExpense>()
+            .Where(entry => IsSourceMutation(entry.State))
+            .Select(entry =>
+                new CycleSource(
+                    entry.Entity.OrganizationId,
+                    entry.Entity.CropCycleId))
+            .Distinct()
+            .ToArray();
+    }
+
+    private IReadOnlyList<CycleSource> GetCapitalSources()
+    {
+        return ChangeTracker
+            .Entries<CapitalContribution>()
+            .Where(entry => IsSourceMutation(entry.State))
+            .Select(entry =>
+                new CycleSource(
+                    entry.Entity.OrganizationId,
+                    entry.Entity.CropCycleId))
+            .Distinct()
+            .ToArray();
+    }
+
+    private IReadOnlyList<SaleSource> GetPaymentSources()
+    {
+        return ChangeTracker
+            .Entries<SalePayment>()
+            .Where(entry => IsSourceMutation(entry.State))
+            .Select(entry =>
+                new SaleSource(
+                    entry.Entity.OrganizationId,
+                    entry.Entity.SaleId))
+            .Distinct()
+            .ToArray();
+    }
+
+    private void ThrowWhenCycleIsLocked(
+        Guid organizationId,
+        Guid cropCycleId,
+        string errorCode,
+        string sourceType)
+    {
+        var settlement =
+            Set<ProfitSharingSettlement>()
+                .AsNoTracking()
+                .Where(candidate =>
+                    candidate.OrganizationId ==
+                        organizationId &&
+                    candidate.CropCycleId ==
+                        cropCycleId &&
+                    candidate.Status ==
+                        ProfitSharingSettlementStatus.Finalized &&
+                    !candidate.IsDeleted)
+                .Select(candidate =>
+                    new
+                    {
+                        candidate.Id,
+                        candidate.CropCycleId
+                    })
+                .FirstOrDefault();
+
+        if (settlement is null)
+        {
+            return;
+        }
+
+        throw new ProfitSharingSourceLockedException(
+            errorCode,
+            sourceType,
+            organizationId,
+            settlement.CropCycleId,
+            settlement.Id);
+    }
+
+    private async Task ThrowWhenCycleIsLockedAsync(
+        Guid organizationId,
+        Guid cropCycleId,
+        string errorCode,
+        string sourceType,
+        CancellationToken cancellationToken)
+    {
+        var settlement =
+            await Set<ProfitSharingSettlement>()
+                .AsNoTracking()
+                .Where(candidate =>
+                    candidate.OrganizationId ==
+                        organizationId &&
+                    candidate.CropCycleId ==
+                        cropCycleId &&
+                    candidate.Status ==
+                        ProfitSharingSettlementStatus.Finalized &&
+                    !candidate.IsDeleted)
+                .Select(candidate =>
+                    new
+                    {
+                        candidate.Id,
+                        candidate.CropCycleId
+                    })
+                .FirstOrDefaultAsync(cancellationToken);
+
+        if (settlement is null)
+        {
+            return;
+        }
+
+        throw new ProfitSharingSourceLockedException(
+            errorCode,
+            sourceType,
+            organizationId,
+            settlement.CropCycleId,
+            settlement.Id);
+    }
+
+    private static bool IsSourceMutation(
+        EntityState state)
+    {
+        return state is
+            EntityState.Added or
+            EntityState.Modified or
+            EntityState.Deleted;
+    }
+
+    private sealed record CycleSource(
+        Guid OrganizationId,
+        Guid CropCycleId);
+
+    private sealed record SaleSource(
+        Guid OrganizationId,
+        Guid SaleId);
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
