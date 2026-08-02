@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.Profitability.Services;
 using SiPacul.Application.Finance.SalePayments.Services;
 using SiPacul.Application.Finance.CapitalContributions.Services;
 using SiPacul.Application.Finance.Expenses.Services;
@@ -66,6 +67,12 @@ public static class DependencyInjection
         services.AddScoped<
             ISalePaymentService,
             SalePaymentService>();
+
+        services.AddSingleton(TimeProvider.System);
+
+        services.AddScoped<
+            IProfitabilityService,
+            ProfitabilityService>();
 
         return services;
     }
