@@ -1,0 +1,41 @@
+using SiPacul.Domain.Entities.Finance.Profitability;
+using SiPacul.Domain.Entities.Finance.ProfitSharing;
+
+namespace SiPacul.Application.Finance.ProfitSharing.Contracts;
+
+public sealed record ProfitSharingSettlementResponse(
+    Guid Id,
+    Guid OrganizationId,
+    Guid CropCycleId,
+    string Code,
+    DateOnly SettlementDate,
+    string ManagingPartnerCode,
+    string ManagingPartnerName,
+    decimal RecognizedRevenue,
+    decimal CollectedRevenue,
+    decimal OutstandingReceivable,
+    decimal ActivityResourceCost,
+    decimal ManualExpenseCost,
+    decimal TotalCultivationCost,
+    decimal NetProfit,
+    ProfitabilityOutcome Outcome,
+    decimal ManagementProfitPool,
+    decimal CapitalProfitPool,
+    decimal TotalInvestorCapital,
+    decimal TotalPartnerCapital,
+    decimal TotalCapital,
+    decimal TotalCapitalRecovery,
+    decimal TotalCapitalLoss,
+    decimal TotalInvestorProfitShare,
+    decimal TotalPartnerProfitShare,
+    decimal TotalPayout,
+    string CalculationVersion,
+    string? Notes,
+    ProfitSharingSettlementStatus Status,
+    bool IsActive,
+    DateTime? FinalizedAt,
+    DateTime? VoidedAt,
+    string? VoidReason,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    IReadOnlyList<ProfitSharingAllocationResponse> Allocations);
