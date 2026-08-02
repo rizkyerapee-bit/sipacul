@@ -1,3 +1,4 @@
+using SiPacul.Application.Finance.ProfitSharing.Persistence;
 using SiPacul.Application.Finance.Profitability.Persistence;
 using SiPacul.Application.Finance.SalePayments.Persistence;
 using SiPacul.Application.Finance.CapitalContributions.Persistence;
@@ -119,6 +120,10 @@ public static class DependencyInjection
         services.AddScoped<
             IProfitabilityReadRepository,
             ProfitabilityReadRepository>();
+
+        services.AddScoped<
+            IProfitSharingSettlementRepository,
+            ProfitSharingSettlementRepository>();
 
         return services;
     }
