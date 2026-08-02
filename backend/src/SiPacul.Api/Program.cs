@@ -1,3 +1,5 @@
+using SiPacul.Api.Endpoints.Authentication;
+using SiPacul.Api.Security;
 using SiPacul.Api.Common.Http;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing;
 using SiPacul.Api.Endpoints.Finance.Profitability;
@@ -25,6 +27,8 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(
     builder.Configuration);
 
+builder.Services.AddSiPaculAuthentication();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -34,6 +38,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseAntiforgery();
+
+app.MapAuthenticationEndpoints();
 app.MapOrganizationEndpoints();
 app.MapCommodityCategoryEndpoints();
 app.MapCommodityEndpoints();

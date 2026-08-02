@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using SiPacul.Application.Security.Authentication.Services;
 using SiPacul.Infrastructure.Identity;
 using SiPacul.Application.Finance.ProfitSharing.Persistence;
 using SiPacul.Application.Finance.Profitability.Persistence;
@@ -58,8 +60,29 @@ public static class DependencyInjection
                 });
         });
 
-        services.AddIdentityCore<ApplicationUser>()
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Password.RequiredLength = 12;
+                options.Password.RequiredUniqueChars = 1;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+                options.Password.RequireUppercase = true;
+
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan =
+                    TimeSpan.FromMinutes(15);
+
+                options.SignIn.RequireConfirmedEmail = false;
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddSignInManager()
             .AddEntityFrameworkStores<SiPaculDbContext>();
+
+        services.AddScoped<
+            IUserAuthenticationService,
+            UserAuthenticationService>();
 
         services.AddScoped<
             IOrganizationRepository,
