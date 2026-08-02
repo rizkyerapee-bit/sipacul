@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SiPacul.Domain.Entities.Finance.ProfitSharing;
 using SiPacul.Domain.Entities.Finance;
 using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Harvests;
@@ -60,6 +61,14 @@ public sealed class SiPaculDbContext : DbContext
 
     public DbSet<SalePayment> SalePayments =>
         Set<SalePayment>();
+
+    public DbSet<ProfitSharingSettlement>
+        ProfitSharingSettlements =>
+        Set<ProfitSharingSettlement>();
+
+    public DbSet<ProfitSharingAllocation>
+        ProfitSharingAllocations =>
+        Set<ProfitSharingAllocation>();
 
     public DbSet<Land> Lands =>
         Set<Land>();

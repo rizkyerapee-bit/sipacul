@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SiPacul.Infrastructure.Data;
@@ -11,9 +12,11 @@ using SiPacul.Infrastructure.Data;
 namespace SiPacul.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(SiPaculDbContext))]
-    partial class SiPaculDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260802040559_AddProfitSharingSettlements")]
+    partial class AddProfitSharingSettlements
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
