@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.Finance.ProfitSharing;
 using SiPacul.Api.Endpoints.Finance.Profitability;
 using SiPacul.Api.Endpoints.Finance.SalePayments;
 using SiPacul.Api.Endpoints.Finance.CapitalContributions;
@@ -47,6 +48,7 @@ app.MapSalePaymentEndpoints();
 
 app.MapProfitabilityEndpoints();
 
+app.MapProfitSharingSettlementEndpoints();
 app.Run();
 
 public partial class Program;
