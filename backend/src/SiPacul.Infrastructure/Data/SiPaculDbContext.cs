@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using SiPacul.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using SiPacul.Domain.Entities.Finance.ProfitSharing;
 using SiPacul.Domain.Entities.Finance;
@@ -10,7 +13,8 @@ using SiPacul.Domain.Entities.Sales;
 
 namespace SiPacul.Infrastructure.Data;
 
-public sealed class SiPaculDbContext : DbContext
+public sealed class SiPaculDbContext :
+    IdentityUserContext<ApplicationUser, Guid>
 {
     public SiPaculDbContext(
         DbContextOptions<SiPaculDbContext> options)
@@ -75,6 +79,13 @@ public sealed class SiPaculDbContext : DbContext
 
     public DbSet<LandPlot> LandPlots =>
         Set<LandPlot>();
+
+    public DbSet<ApplicationUser> ApplicationUsers =>
+        Set<ApplicationUser>();
+
+    public DbSet<OrganizationMembership>
+        OrganizationMemberships =>
+            Set<OrganizationMembership>();
 
     public override int SaveChanges(
         bool acceptAllChangesOnSuccess)
@@ -348,9 +359,22 @@ public sealed class SiPaculDbContext : DbContext
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder
+            .Entity<IdentityUserClaim<Guid>>()
+            .ToTable("UserClaims");
+
+        modelBuilder
+            .Entity<IdentityUserLogin<Guid>>()
+            .ToTable("UserLogins");
+
+        modelBuilder
+            .Entity<IdentityUserToken<Guid>>()
+            .ToTable("UserTokens");
+
+
         modelBuilder.ApplyConfigurationsFromAssembly(
             typeof(SiPaculDbContext).Assembly);
-
-        base.OnModelCreating(modelBuilder);
     }
 }

@@ -1,3 +1,4 @@
+using SiPacul.Infrastructure.Identity;
 using SiPacul.Application.Finance.ProfitSharing.Persistence;
 using SiPacul.Application.Finance.Profitability.Persistence;
 using SiPacul.Application.Finance.SalePayments.Persistence;
@@ -56,6 +57,9 @@ public static class DependencyInjection
                         null);
                 });
         });
+
+        services.AddIdentityCore<ApplicationUser>()
+            .AddEntityFrameworkStores<SiPaculDbContext>();
 
         services.AddScoped<
             IOrganizationRepository,
