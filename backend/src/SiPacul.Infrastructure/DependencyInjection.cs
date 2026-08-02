@@ -125,6 +125,10 @@ public static class DependencyInjection
             IProfitSharingSettlementRepository,
             ProfitSharingSettlementRepository>();
 
+        services.AddScoped<
+            IProfitSharingSettlementFinalizationProcessor,
+            ProfitSharingSettlementFinalizationProcessor>();
+
         return services;
     }
 }

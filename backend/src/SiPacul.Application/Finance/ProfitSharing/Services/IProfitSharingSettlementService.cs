@@ -38,6 +38,13 @@ public interface IProfitSharingSettlementService
             CancellationToken cancellationToken = default);
 
     Task<Result<ProfitSharingSettlementResponse>>
+        FinalizeAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            Guid settlementId,
+            CancellationToken cancellationToken = default);
+
+    Task<Result<ProfitSharingSettlementResponse>>
         VoidAsync(
             Guid organizationId,
             Guid cropCycleId,

@@ -34,6 +34,10 @@ public sealed class ProfitSharingSettlementService :
 
     private readonly IUnitOfWork _unitOfWork;
 
+    private readonly
+        IProfitSharingSettlementFinalizationProcessor?
+        _finalizationProcessor;
+
     public ProfitSharingSettlementService(
         IProfitSharingSettlementRepository
             settlementRepository,
@@ -42,7 +46,9 @@ public sealed class ProfitSharingSettlementService :
         IProfitabilityService profitabilityService,
         ICropCycleRepository cropCycleRepository,
         IOrganizationRepository organizationRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        IProfitSharingSettlementFinalizationProcessor?
+            finalizationProcessor = null)
     {
         _settlementRepository =
             settlementRepository;
@@ -60,6 +66,9 @@ public sealed class ProfitSharingSettlementService :
             organizationRepository;
 
         _unitOfWork = unitOfWork;
+
+        _finalizationProcessor =
+            finalizationProcessor;
     }
 
     public async Task<Result<ProfitSharingSettlementResponse>>
@@ -366,6 +375,55 @@ public sealed class ProfitSharingSettlementService :
     }
 
     public async Task<Result<ProfitSharingSettlementResponse>>
+        FinalizeAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            Guid settlementId,
+            CancellationToken cancellationToken = default)
+    {
+        var identifierError =
+            ValidateIdentifiers(
+                organizationId,
+                cropCycleId,
+                settlementId);
+
+        if (identifierError is not null)
+        {
+            return Result<ProfitSharingSettlementResponse>
+                .Failure(identifierError);
+        }
+
+        if (_finalizationProcessor is null)
+        {
+            return Result<ProfitSharingSettlementResponse>
+                .Failure(
+                    ProfitSharingSettlementErrors
+                        .ConcurrencyConflict());
+        }
+
+        var result =
+            await _finalizationProcessor.FinalizeAsync(
+                organizationId,
+                cropCycleId,
+                settlementId,
+                cancellationToken);
+
+        if (result.IsSuccess)
+        {
+            return Result<ProfitSharingSettlementResponse>
+                .Success(
+                    result.Settlement!.ToResponse());
+        }
+
+        return Result<ProfitSharingSettlementResponse>
+            .Failure(
+                MapFinalizationFailure(
+                    settlementId,
+                    cropCycleId,
+                    result));
+    }
+
+    public async Task<Result<ProfitSharingSettlementResponse>>
         VoidAsync(
             Guid organizationId,
             Guid cropCycleId,
@@ -428,6 +486,106 @@ public sealed class ProfitSharingSettlementService :
 
         return Result<ProfitSharingSettlementResponse>
             .Success(settlement.ToResponse());
+    }
+
+    private static Error MapFinalizationFailure(
+        Guid settlementId,
+        Guid cropCycleId,
+        ProfitSharingFinalizationResult result)
+    {
+        return result.Failure switch
+        {
+            ProfitSharingFinalizationFailure
+                .SettlementNotFound =>
+                ProfitSharingSettlementErrors.NotFound(
+                    settlementId),
+
+            ProfitSharingFinalizationFailure
+                .InvalidStatus =>
+                ProfitSharingSettlementErrors
+                    .InvalidStatusTransition(
+                        result.Message ??
+                        "Only a draft settlement can be " +
+                        "finalized."),
+
+            ProfitSharingFinalizationFailure
+                .ActiveSettlementExists =>
+                ProfitSharingSettlementErrors
+                    .ActiveSettlementExists(
+                        cropCycleId),
+
+            ProfitSharingFinalizationFailure
+                .CropCycleNotTerminal =>
+                ProfitSharingSettlementErrors
+                    .CropCycleNotTerminal(),
+
+            ProfitSharingFinalizationFailure
+                .ActiveActivityExists =>
+                ProfitSharingSettlementErrors
+                    .ActiveActivityExists(),
+
+            ProfitSharingFinalizationFailure
+                .DraftHarvestExists =>
+                ProfitSharingSettlementErrors
+                    .DraftHarvestExists(),
+
+            ProfitSharingFinalizationFailure
+                .UnsoldHarvestExists =>
+                ProfitSharingSettlementErrors
+                    .UnsoldHarvestExists(),
+
+            ProfitSharingFinalizationFailure
+                .DraftSaleExists =>
+                ProfitSharingSettlementErrors
+                    .DraftSaleExists(),
+
+            ProfitSharingFinalizationFailure
+                .OutstandingReceivableExists =>
+                ProfitSharingSettlementErrors
+                    .OutstandingReceivableExists(
+                        result.OutstandingReceivable),
+
+            ProfitSharingFinalizationFailure
+                .DraftExpenseExists =>
+                ProfitSharingSettlementErrors
+                    .DraftExpenseExists(),
+
+            ProfitSharingFinalizationFailure
+                .DraftContributionExists =>
+                ProfitSharingSettlementErrors
+                    .DraftContributionExists(),
+
+            ProfitSharingFinalizationFailure
+                .DraftPaymentExists =>
+                ProfitSharingSettlementErrors
+                    .DraftPaymentExists(),
+
+            ProfitSharingFinalizationFailure
+                .CapitalDoesNotMatchCost =>
+                ProfitSharingSettlementErrors
+                    .CapitalDoesNotMatchCost(
+                        result.TotalCapital,
+                        result.TotalCost),
+
+            ProfitSharingFinalizationFailure
+                .ZeroCostUnsupported =>
+                ProfitSharingSettlementErrors
+                    .ZeroCostUnsupported(),
+
+            ProfitSharingFinalizationFailure
+                .SourceDataChanged =>
+                ProfitSharingSettlementErrors
+                    .SourceDataChanged(),
+
+            ProfitSharingFinalizationFailure
+                .ConcurrencyConflict =>
+                ProfitSharingSettlementErrors
+                    .ConcurrencyConflict(),
+
+            _ =>
+                ProfitSharingSettlementErrors
+                    .ConcurrencyConflict()
+        };
     }
 
     private async Task<

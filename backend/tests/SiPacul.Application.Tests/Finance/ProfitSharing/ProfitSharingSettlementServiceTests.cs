@@ -598,6 +598,212 @@ public sealed class ProfitSharingSettlementServiceTests
             descriptor.Lifetime);
     }
 
+    [Fact]
+    public async Task Finalize_WithSuccessfulProcessor_ShouldReturnFinalized()
+    {
+        var context = CreateContext();
+        var settlement = CreateSettlement(context);
+        var processor =
+            new FakeFinalizationProcessor(
+                ProfitSharingFinalizationResult
+                    .Succeeded(
+                        FinalizeSettlement(
+                            settlement)));
+
+        var result =
+            await CreateService(
+                    context,
+                    new FakeSettlementRepository(
+                        settlement),
+                    CreateContributions(context),
+                    CreateProfitabilityService(context),
+                    new FakeUnitOfWork(),
+                    processor)
+                .FinalizeAsync(
+                    context.Organization.Id,
+                    context.CropCycle.Id,
+                    settlement.Id);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            ProfitSharingSettlementStatus.Finalized,
+            result.Value.Status);
+
+        Assert.True(result.Value.IsActive);
+        Assert.Equal(1, processor.CallCount);
+    }
+
+    [Theory]
+    [InlineData(
+        ProfitSharingFinalizationFailure.SettlementNotFound,
+        ProfitSharingSettlementErrors.NotFoundCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.InvalidStatus,
+        ProfitSharingSettlementErrors
+            .InvalidStatusTransitionCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.ActiveSettlementExists,
+        ProfitSharingSettlementErrors
+            .ActiveSettlementExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.CropCycleNotTerminal,
+        ProfitSharingSettlementErrors
+            .CropCycleNotTerminalCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.ActiveActivityExists,
+        ProfitSharingSettlementErrors
+            .ActiveActivityExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.DraftHarvestExists,
+        ProfitSharingSettlementErrors
+            .DraftHarvestExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.UnsoldHarvestExists,
+        ProfitSharingSettlementErrors
+            .UnsoldHarvestExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.DraftSaleExists,
+        ProfitSharingSettlementErrors
+            .DraftSaleExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure
+            .OutstandingReceivableExists,
+        ProfitSharingSettlementErrors
+            .OutstandingReceivableExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.DraftExpenseExists,
+        ProfitSharingSettlementErrors
+            .DraftExpenseExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure
+            .DraftContributionExists,
+        ProfitSharingSettlementErrors
+            .DraftContributionExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.DraftPaymentExists,
+        ProfitSharingSettlementErrors
+            .DraftPaymentExistsCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure
+            .CapitalDoesNotMatchCost,
+        ProfitSharingSettlementErrors
+            .CapitalDoesNotMatchCostCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.ZeroCostUnsupported,
+        ProfitSharingSettlementErrors
+            .ZeroCostUnsupportedCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.SourceDataChanged,
+        ProfitSharingSettlementErrors
+            .SourceDataChangedCode)]
+    [InlineData(
+        ProfitSharingFinalizationFailure.ConcurrencyConflict,
+        ProfitSharingSettlementErrors
+            .ConcurrencyConflictCode)]
+    public async Task Finalize_WithProcessorFailure_ShouldMapError(
+        ProfitSharingFinalizationFailure failure,
+        string expectedCode)
+    {
+        var context = CreateContext();
+        var settlement = CreateSettlement(context);
+
+        var processor =
+            new FakeFinalizationProcessor(
+                ProfitSharingFinalizationResult.Failed(
+                    failure,
+                    outstandingReceivable: 100,
+                    totalCapital: 200,
+                    totalCost: 300,
+                    message: "Invalid transition"));
+
+        var result =
+            await CreateService(
+                    context,
+                    new FakeSettlementRepository(
+                        settlement),
+                    CreateContributions(context),
+                    CreateProfitabilityService(context),
+                    new FakeUnitOfWork(),
+                    processor)
+                .FinalizeAsync(
+                    context.Organization.Id,
+                    context.CropCycle.Id,
+                    settlement.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(expectedCode, result.Error.Code);
+        Assert.Equal(1, processor.CallCount);
+    }
+
+    [Fact]
+    public async Task Finalize_WithEmptySettlementId_ShouldValidate()
+    {
+        var context = CreateContext();
+
+        var processor =
+            new FakeFinalizationProcessor(
+                ProfitSharingFinalizationResult.Failed(
+                    ProfitSharingFinalizationFailure
+                        .SettlementNotFound));
+
+        var result =
+            await CreateService(
+                    context,
+                    new FakeSettlementRepository(),
+                    CreateContributions(context),
+                    CreateProfitabilityService(context),
+                    new FakeUnitOfWork(),
+                    processor)
+                .FinalizeAsync(
+                    context.Organization.Id,
+                    context.CropCycle.Id,
+                    Guid.Empty);
+
+        Assert.True(result.IsFailure);
+
+        Assert.Equal(
+            ProfitSharingSettlementErrors.ValidationCode,
+            result.Error.Code);
+
+        Assert.Equal(0, processor.CallCount);
+    }
+
+    [Fact]
+    public async Task Finalize_WithoutProcessor_ShouldReturnConcurrency()
+    {
+        var context = CreateContext();
+        var settlement = CreateSettlement(context);
+
+        var result =
+            await CreateService(
+                    context,
+                    new FakeSettlementRepository(
+                        settlement),
+                    CreateContributions(context),
+                    CreateProfitabilityService(context),
+                    new FakeUnitOfWork())
+                .FinalizeAsync(
+                    context.Organization.Id,
+                    context.CropCycle.Id,
+                    settlement.Id);
+
+        Assert.True(result.IsFailure);
+
+        Assert.Equal(
+            ProfitSharingSettlementErrors
+                .ConcurrencyConflictCode,
+            result.Error.Code);
+    }
+
+    private static ProfitSharingSettlement FinalizeSettlement(
+        ProfitSharingSettlement settlement)
+    {
+        settlement.FinalizeSettlement();
+
+        return settlement;
+    }
+
     private static ProfitSharingSettlementService
         CreateService(
             TestContext context,
@@ -605,7 +811,9 @@ public sealed class ProfitSharingSettlementServiceTests
             IReadOnlyCollection<CapitalContribution>
                 contributions,
             IProfitabilityService profitabilityService,
-            IUnitOfWork unitOfWork)
+            IUnitOfWork unitOfWork,
+            IProfitSharingSettlementFinalizationProcessor?
+                finalizationProcessor = null)
     {
         return new ProfitSharingSettlementService(
             repository,
@@ -616,7 +824,8 @@ public sealed class ProfitSharingSettlementServiceTests
                 context.CropCycle),
             new FakeOrganizationRepository(
                 context.Organization),
-            unitOfWork);
+            unitOfWork,
+            finalizationProcessor);
     }
 
     private static TestContext CreateContext()
@@ -1383,6 +1592,33 @@ public sealed class ProfitSharingSettlementServiceTests
         public void Add(Organization organization)
         {
             _organizations.Add(organization);
+        }
+    }
+
+    private sealed class FakeFinalizationProcessor :
+        IProfitSharingSettlementFinalizationProcessor
+    {
+        private readonly ProfitSharingFinalizationResult
+            _result;
+
+        public FakeFinalizationProcessor(
+            ProfitSharingFinalizationResult result)
+        {
+            _result = result;
+        }
+
+        public int CallCount { get; private set; }
+
+        public Task<ProfitSharingFinalizationResult>
+            FinalizeAsync(
+                Guid organizationId,
+                Guid cropCycleId,
+                Guid settlementId,
+                CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+
+            return Task.FromResult(_result);
         }
     }
 
