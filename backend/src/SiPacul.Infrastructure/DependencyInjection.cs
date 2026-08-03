@@ -1,3 +1,4 @@
+using SiPacul.Application.Security.Bootstrap.Services;
 using Microsoft.AspNetCore.Identity;
 using SiPacul.Application.Security.Authentication.Services;
 using SiPacul.Infrastructure.Identity;
@@ -83,6 +84,14 @@ public static class DependencyInjection
         services.AddScoped<
             IUserAuthenticationService,
             UserAuthenticationService>();
+
+        services.Configure<FirstOwnerBootstrapOptions>(
+            configuration.GetSection(
+                FirstOwnerBootstrapOptions.SectionName));
+
+        services.AddScoped<
+            IFirstOwnerBootstrapService,
+            FirstOwnerBootstrapService>();
 
         services.AddScoped<
             IOrganizationRepository,

@@ -1,3 +1,4 @@
+using SiPacul.Api.Endpoints.Bootstrap;
 using SiPacul.Api.Endpoints.Authentication;
 using SiPacul.Api.Security;
 using SiPacul.Api.Common.Http;
@@ -41,6 +42,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+
+app.MapBootstrapEndpoints();
 
 app.MapAuthenticationEndpoints();
 app.MapOrganizationEndpoints();
