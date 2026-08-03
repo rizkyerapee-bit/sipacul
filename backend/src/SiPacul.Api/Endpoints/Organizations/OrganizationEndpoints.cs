@@ -1,5 +1,7 @@
-﻿using SiPacul.Api.Common.Http;
+using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
 using SiPacul.Application.Organizations.Contracts;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Organizations.Services;
 
 namespace SiPacul.Api.Endpoints.Organizations;
@@ -14,7 +16,8 @@ public static class OrganizationEndpoints
     {
         var group = endpoints
             .MapGroup("/api/v1/organizations")
-            .WithTags("Organizations");
+            .WithTags("Organizations")
+            .RequireAuthorization();
 
         group.MapPost(
                 string.Empty,
@@ -44,7 +47,9 @@ public static class OrganizationEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.OrganizationsRead);
 
         group.MapPut(
                 "/{organizationId:guid}",
@@ -55,7 +60,9 @@ public static class OrganizationEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.OrganizationsManage);
 
         group.MapPatch(
                 "/{organizationId:guid}/activate",
@@ -66,7 +73,9 @@ public static class OrganizationEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.OrganizationsManage);
 
         group.MapPatch(
                 "/{organizationId:guid}/deactivate",
@@ -77,7 +86,9 @@ public static class OrganizationEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.OrganizationsManage);
 
         return group;
     }

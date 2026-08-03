@@ -1,4 +1,6 @@
-﻿using SiPacul.Api.Common.Http;
+using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.MasterData.Commodities.Contracts;
 using SiPacul.Application.MasterData.Commodities.Services;
 
@@ -29,7 +31,9 @@ public static class CommodityEndpoints
             .ProducesProblem(
                 StatusCodes.Status404NotFound)
             .ProducesProblem(
-                StatusCodes.Status409Conflict);
+                StatusCodes.Status409Conflict)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite);
 
         group.MapGet(
                 string.Empty,
@@ -40,7 +44,9 @@ public static class CommodityEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataRead);
 
         group.MapGet(
                 "/{commodityId:guid}",
@@ -51,7 +57,9 @@ public static class CommodityEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataRead);
 
         group.MapPut(
                 "/{commodityId:guid}",
@@ -62,7 +70,9 @@ public static class CommodityEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite);
 
         group.MapPatch(
                 "/{commodityId:guid}/activate",
@@ -73,7 +83,9 @@ public static class CommodityEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite);
 
         group.MapPatch(
                 "/{commodityId:guid}/deactivate",
@@ -84,7 +96,9 @@ public static class CommodityEndpoints
             .ProducesProblem(
                 StatusCodes.Status400BadRequest)
             .ProducesProblem(
-                StatusCodes.Status404NotFound);
+                StatusCodes.Status404NotFound)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite);
 
         return group;
     }

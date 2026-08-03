@@ -1,12 +1,14 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
 using SiPacul.Application.MasterData.CommodityCategories;
 using SiPacul.Application.MasterData.CommodityCategories.Contracts;
 using SiPacul.Application.MasterData.CommodityCategories.Services;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Shared.Results;
 using Xunit;
 
@@ -380,6 +382,91 @@ public sealed class CommodityCategoryEndpointTests
         Assert.False(content!.IsActive);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory =
+            new CommodityCategoryApiFactory();
+
+        var organizationId = Guid.NewGuid();
+
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v1/organizations/{organizationId}/" +
+            "commodity-categories");
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        using var factory =
+            new CommodityCategoryApiFactory();
+
+        factory.Authorization.Granted = false;
+
+        var organizationId = Guid.NewGuid();
+
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            "commodity-categories");
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.MasterDataRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        using var factory =
+            new CommodityCategoryApiFactory();
+
+        factory.Authorization.Granted = false;
+
+        var organizationId = Guid.NewGuid();
+
+        using var client = factory.CreateHttpsClient();
+
+        var request =
+            new CreateCommodityCategoryRequest(
+                "Tanaman Buah",
+                "Tanaman penghasil buah");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            "commodity-categories",
+            request);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.MasterDataWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static CommodityCategoryResponse
         CreateCategoryResponse(
             Guid organizationId,
@@ -404,6 +491,10 @@ public sealed class CommodityCategoryEndpointTests
             get;
         } = new();
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         public HttpClient CreateHttpsClient()
         {
             return CreateClient(
@@ -427,6 +518,9 @@ public sealed class CommodityCategoryEndpointTests
 
             builder.ConfigureServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<
                     ICommodityCategoryService>();
 
