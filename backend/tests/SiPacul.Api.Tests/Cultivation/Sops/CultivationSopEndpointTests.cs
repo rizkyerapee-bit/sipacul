@@ -1,9 +1,11 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Cultivation.Sops;
 using SiPacul.Application.Cultivation.Sops.Contracts;
 using SiPacul.Application.Cultivation.Sops.Services;
@@ -491,6 +493,82 @@ public sealed class CultivationSopEndpointTests
             response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory = new CultivationSopApiFactory();
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v1/organizations/{organizationId}/" +
+            "cultivation-sops");
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        using var factory = new CultivationSopApiFactory();
+        factory.Authorization.Granted = false;
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            "cultivation-sops");
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            organizationId,
+            factory.Authorization.LastOrganizationId);
+
+        Assert.Equal(
+            Permissions.MasterDataRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        using var factory = new CultivationSopApiFactory();
+        factory.Authorization.Granted = false;
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            "cultivation-sops",
+            new CreateCultivationSopRequest(
+                Guid.NewGuid(),
+                "SOP Padi",
+                null));
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.MasterDataWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static CultivationSopResponse CreateResponse(
         Guid organizationId,
         Guid commodityId,
@@ -539,6 +617,10 @@ public sealed class CultivationSopEndpointTests
             get;
         } = new();
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         public HttpClient CreateHttpsClient()
         {
             return CreateClient(
@@ -562,6 +644,9 @@ public sealed class CultivationSopEndpointTests
 
             builder.ConfigureServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<
                     ICultivationSopService>();
 

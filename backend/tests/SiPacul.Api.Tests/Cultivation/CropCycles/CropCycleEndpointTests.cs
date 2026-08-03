@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Cultivation.CropCycles;
 using SiPacul.Application.Cultivation.CropCycles.Contracts;
 using SiPacul.Application.Cultivation.CropCycles.Services;
@@ -628,6 +630,79 @@ public sealed class CropCycleEndpointTests
             response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory = new CropCycleApiFactory();
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v1/organizations/{organizationId}/" +
+            "crop-cycles");
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        using var factory = new CropCycleApiFactory();
+        factory.Authorization.Granted = false;
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            "crop-cycles");
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            organizationId,
+            factory.Authorization.LastOrganizationId);
+
+        Assert.Equal(
+            Permissions.CultivationRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        using var factory = new CropCycleApiFactory();
+        factory.Authorization.Granted = false;
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            "crop-cycles",
+            CreateRequest());
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.CultivationWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static async Task<HttpResponseMessage>
         SendPatchAsync<TRequest>(
             HttpClient client,
@@ -719,6 +794,10 @@ public sealed class CropCycleEndpointTests
         public FakeCropCycleService Service { get; } =
             new();
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         public HttpClient CreateHttpsClient()
         {
             return CreateClient(
@@ -742,6 +821,9 @@ public sealed class CropCycleEndpointTests
 
             builder.ConfigureServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<ICropCycleService>();
 
                 services.AddSingleton<ICropCycleService>(

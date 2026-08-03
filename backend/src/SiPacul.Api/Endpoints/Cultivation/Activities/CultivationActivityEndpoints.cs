@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Cultivation.Activities.Contracts;
 using SiPacul.Application.Cultivation.Activities.Services;
 using SiPacul.Domain.Entities.Cultivation;
@@ -25,6 +27,8 @@ public static class CultivationActivityEndpoints
                 string.Empty,
                 CreateAsync)
             .WithName("CultivationActivities.Create")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -38,6 +42,8 @@ public static class CultivationActivityEndpoints
                 string.Empty,
                 GetAllAsync)
             .WithName("CultivationActivities.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.CultivationRead)
             .Produces<
                 IReadOnlyList<CultivationActivityResponse>>(
                 StatusCodes.Status200OK)
@@ -50,6 +56,8 @@ public static class CultivationActivityEndpoints
                 "/{activityId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.CultivationRead)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -62,6 +70,8 @@ public static class CultivationActivityEndpoints
                 UpdatePlanAsync)
             .WithName(
                 "CultivationActivities.UpdatePlan")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -75,6 +85,8 @@ public static class CultivationActivityEndpoints
                 "/{activityId:guid}/start",
                 StartAsync)
             .WithName("CultivationActivities.Start")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -88,6 +100,8 @@ public static class CultivationActivityEndpoints
                 "/{activityId:guid}/complete",
                 CompleteAsync)
             .WithName("CultivationActivities.Complete")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -101,6 +115,8 @@ public static class CultivationActivityEndpoints
                 "/{activityId:guid}/cancel",
                 CancelAsync)
             .WithName("CultivationActivities.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -115,6 +131,8 @@ public static class CultivationActivityEndpoints
                 UpdateNotesAsync)
             .WithName(
                 "CultivationActivities.UpdateNotes")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -129,6 +147,8 @@ public static class CultivationActivityEndpoints
                 AddResourceAsync)
             .WithName(
                 "CultivationActivities.AddResource")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -144,6 +164,8 @@ public static class CultivationActivityEndpoints
                 UpdateResourceAsync)
             .WithName(
                 "CultivationActivities.UpdateResource")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -159,6 +181,8 @@ public static class CultivationActivityEndpoints
                 RemoveResourceAsync)
             .WithName(
                 "CultivationActivities.RemoveResource")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CultivationActivityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

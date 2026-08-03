@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Lands;
 using SiPacul.Application.Lands.Contracts;
 using SiPacul.Application.Lands.Services;
@@ -600,6 +602,76 @@ public sealed class LandEndpointTests
         Assert.False(content!.Plots[0].IsActive);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        using var factory = new LandApiFactory();
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/v1/organizations/{organizationId}/lands");
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        using var factory = new LandApiFactory();
+        factory.Authorization.Granted = false;
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(
+            $"/api/v1/organizations/{organizationId}/lands");
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            organizationId,
+            factory.Authorization.LastOrganizationId);
+
+        Assert.Equal(
+            Permissions.LandsRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        using var factory = new LandApiFactory();
+        factory.Authorization.Granted = false;
+        var organizationId = Guid.NewGuid();
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/organizations/{organizationId}/lands",
+            CreateLandRequest());
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.LandsWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static CreateLandRequest CreateLandRequest(
         string code = "LHN-001")
     {
@@ -710,6 +782,10 @@ public sealed class LandEndpointTests
         public FakeLandService Service { get; } =
             new();
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         public HttpClient CreateHttpsClient()
         {
             return CreateClient(
@@ -733,6 +809,9 @@ public sealed class LandEndpointTests
 
             builder.ConfigureServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<ILandService>();
 
                 services.AddSingleton<ILandService>(

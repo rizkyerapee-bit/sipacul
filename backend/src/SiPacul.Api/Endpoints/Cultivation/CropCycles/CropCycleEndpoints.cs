@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Cultivation.CropCycles.Contracts;
 using SiPacul.Application.Cultivation.CropCycles.Services;
 using SiPacul.Domain.Entities.Cultivation;
@@ -23,6 +25,8 @@ public static class CropCycleEndpoints
                 string.Empty,
                 CreateAsync)
             .WithName("CropCycles.Create")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -36,6 +40,8 @@ public static class CropCycleEndpoints
                 string.Empty,
                 GetAllAsync)
             .WithName("CropCycles.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.CultivationRead)
             .Produces<IReadOnlyList<CropCycleResponse>>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -47,6 +53,8 @@ public static class CropCycleEndpoints
                 "/{cropCycleId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.CultivationRead)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -58,6 +66,8 @@ public static class CropCycleEndpoints
                 "/{cropCycleId:guid}",
                 UpdatePlanAsync)
             .WithName("CropCycles.UpdatePlan")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -71,6 +81,8 @@ public static class CropCycleEndpoints
                 "/{cropCycleId:guid}/start",
                 StartAsync)
             .WithName("CropCycles.Start")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -84,6 +96,8 @@ public static class CropCycleEndpoints
                 "/{cropCycleId:guid}/complete",
                 CompleteAsync)
             .WithName("CropCycles.Complete")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -97,6 +111,8 @@ public static class CropCycleEndpoints
                 "/{cropCycleId:guid}/cancel",
                 CancelAsync)
             .WithName("CropCycles.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -110,6 +126,8 @@ public static class CropCycleEndpoints
                 "/{cropCycleId:guid}/notes",
                 UpdateNotesAsync)
             .WithName("CropCycles.UpdateNotes")
+            .RequireOrganizationPermission(
+                Permissions.CultivationWrite)
             .Produces<CropCycleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

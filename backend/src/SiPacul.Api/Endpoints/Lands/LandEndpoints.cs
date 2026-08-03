@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Lands.Contracts;
 using SiPacul.Application.Lands.Services;
 
@@ -22,6 +24,8 @@ public static class LandEndpoints
                 string.Empty,
                 CreateAsync)
             .WithName("Lands.Create")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -35,6 +39,8 @@ public static class LandEndpoints
                 string.Empty,
                 GetAllAsync)
             .WithName("Lands.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.LandsRead)
             .Produces<IReadOnlyList<LandResponse>>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -46,6 +52,8 @@ public static class LandEndpoints
                 "/{landId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.LandsRead)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -57,6 +65,8 @@ public static class LandEndpoints
                 "/{landId:guid}",
                 UpdateAsync)
             .WithName("Lands.Update")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -70,6 +80,8 @@ public static class LandEndpoints
                 "/{landId:guid}/activate",
                 ActivateAsync)
             .WithName("Lands.Activate")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -81,6 +93,8 @@ public static class LandEndpoints
                 "/{landId:guid}/deactivate",
                 DeactivateAsync)
             .WithName("Lands.Deactivate")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -92,6 +106,8 @@ public static class LandEndpoints
                 "/{landId:guid}/plots",
                 AddPlotAsync)
             .WithName("Lands.AddPlot")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -105,6 +121,8 @@ public static class LandEndpoints
                 "/{landId:guid}/plots/{plotId:guid}",
                 UpdatePlotAsync)
             .WithName("Lands.UpdatePlot")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -118,6 +136,8 @@ public static class LandEndpoints
                 "/{landId:guid}/plots/{plotId:guid}",
                 RemovePlotAsync)
             .WithName("Lands.RemovePlot")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -130,6 +150,8 @@ public static class LandEndpoints
                 "{plotId:guid}/activate",
                 ActivatePlotAsync)
             .WithName("Lands.ActivatePlot")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -142,6 +164,8 @@ public static class LandEndpoints
                 "{plotId:guid}/deactivate",
                 DeactivatePlotAsync)
             .WithName("Lands.DeactivatePlot")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
             .Produces<LandResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

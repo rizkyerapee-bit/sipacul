@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Cultivation.Activities;
 using SiPacul.Application.Cultivation.Activities.Contracts;
 using SiPacul.Application.Cultivation.Activities.Services;
@@ -572,6 +574,75 @@ public sealed class CultivationActivityEndpointTests
             service.LastActivityId);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var service = new StubService();
+        using var factory = new ActivityApiFactory(service);
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            BasePath);
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        var service = new StubService();
+        using var factory = new ActivityApiFactory(service);
+        factory.Authorization.Granted = false;
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(BasePath);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            OrganizationId,
+            factory.Authorization.LastOrganizationId);
+
+        Assert.Equal(
+            Permissions.CultivationRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        var service = new StubService();
+        using var factory = new ActivityApiFactory(service);
+        factory.Authorization.Granted = false;
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.PostAsJsonAsync(
+            BasePath,
+            CreateRequest());
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.CultivationWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static string BasePath =>
         $"/api/v1/organizations/{OrganizationId}" +
         $"/crop-cycles/{CropCycleId}/activities";
@@ -908,6 +979,10 @@ public sealed class CultivationActivityEndpointTests
         private readonly ICultivationActivityService
             _service;
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         public ActivityApiFactory(
             ICultivationActivityService service)
         {
@@ -919,6 +994,9 @@ public sealed class CultivationActivityEndpointTests
         {
             builder.ConfigureTestServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<
                     ICultivationActivityService>();
 

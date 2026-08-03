@@ -1,4 +1,6 @@
-﻿using SiPacul.Api.Common.Http;
+using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Cultivation.Sops.Contracts;
 using SiPacul.Application.Cultivation.Sops.Services;
 
@@ -22,6 +24,8 @@ public static class CultivationSopEndpoints
                 string.Empty,
                 CreateAsync)
             .WithName("CultivationSops.Create")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -35,6 +39,8 @@ public static class CultivationSopEndpoints
                 string.Empty,
                 GetAllAsync)
             .WithName("CultivationSops.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataRead)
             .Produces<IReadOnlyList<CultivationSopResponse>>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -46,6 +52,8 @@ public static class CultivationSopEndpoints
                 "/{cultivationSopId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.MasterDataRead)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -57,6 +65,8 @@ public static class CultivationSopEndpoints
                 "/{cultivationSopId:guid}",
                 UpdateAsync)
             .WithName("CultivationSops.Update")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -70,6 +80,8 @@ public static class CultivationSopEndpoints
                 "/{cultivationSopId:guid}/activate",
                 ActivateAsync)
             .WithName("CultivationSops.Activate")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -81,6 +93,8 @@ public static class CultivationSopEndpoints
                 "/{cultivationSopId:guid}/deactivate",
                 DeactivateAsync)
             .WithName("CultivationSops.Deactivate")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -92,6 +106,8 @@ public static class CultivationSopEndpoints
                 "/{cultivationSopId:guid}/steps",
                 AddStepAsync)
             .WithName("CultivationSops.AddStep")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -104,6 +120,8 @@ public static class CultivationSopEndpoints
                 "{stepId:guid}",
                 UpdateStepAsync)
             .WithName("CultivationSops.UpdateStep")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -116,6 +134,8 @@ public static class CultivationSopEndpoints
                 "{stepId:guid}",
                 RemoveStepAsync)
             .WithName("CultivationSops.RemoveStep")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -128,6 +148,8 @@ public static class CultivationSopEndpoints
                 "{stepId:guid}/move",
                 MoveStepAsync)
             .WithName("CultivationSops.MoveStep")
+            .RequireOrganizationPermission(
+                Permissions.MasterDataWrite)
             .Produces<CultivationSopResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
