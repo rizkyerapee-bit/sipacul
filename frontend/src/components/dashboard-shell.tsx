@@ -6,6 +6,14 @@ import { BrandMark } from "@/components/brand-mark";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
 import { getRoleLabel, hasPermission, resolveSelectedMembership, setSelectedOrganizationId } from "@/lib/session/organization-selection";
+import {
+  readSidebarCollapsed,
+  readThemePreference,
+  setSidebarCollapsed,
+  setThemePreference,
+  type ThemePreference,
+} from "@/lib/ui/shell-preferences";
+import styles from "./dashboard-shell.module.css";
 
 type DashboardState = {
   user: CurrentUser;
@@ -13,32 +21,73 @@ type DashboardState = {
   organization: Organization | null;
 };
 
-const navigation = [
-  { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "grid" },
+type IconName =
+  | "dashboard"
+  | "land"
+  | "sprout"
+  | "harvest"
+  | "sales"
+  | "finance"
+  | "share"
+  | "team"
+  | "menu"
+  | "close"
+  | "collapse"
+  | "expand"
+  | "sun"
+  | "moon"
+  | "chevron"
+  | "logout"
+  | "shield"
+  | "check"
+  | "trend"
+  | "wallet";
+
+type NavigationItem = {
+  label: string;
+  caption: string;
+  permission: string | null;
+  icon: IconName;
+};
+
+const navigation: NavigationItem[] = [
+  { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "dashboard" },
   { label: "Lahan", caption: "Lahan dan petak", permission: "lands.read", icon: "land" },
   { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout" },
   { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest" },
   { label: "Penjualan", caption: "Transaksi dan piutang", permission: "sales.read", icon: "sales" },
   { label: "Keuangan", caption: "Biaya, modal, dan laba", permission: "finance.read", icon: "finance" },
-  { label: "Bagi hasil", caption: "Alokasi investor dan mitra", permission: "profit-sharing.read", icon: "share" },
+  { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share" },
   { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team" },
 ];
 
-function NavigationIcon({ name }: { name: string }) {
-  const paths: Record<string, string> = {
-    grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
-    land: "M3 17l6-10 5 6 3-4 4 8M3 20h18",
-    sprout: "M12 21v-9M12 14c-4 0-7-2-7-6 4 0 7 2 7 6ZM12 11c4 0 7-2 7-6-4 0-7 2-7 6Z",
-    harvest: "M6 20V9M10 20V5M14 20V8M18 20V4M4 20h16",
-    sales: "M4 7h16v12H4zM7 7V5h10v2M8 13h8",
-    finance: "M4 19V9M10 19V5M16 19v-7M22 19H2",
-    share: "M8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM10.5 10.5l3 3",
-    team: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM2 21c0-4 3-7 7-7s7 3 7 7M17 11a3 3 0 1 0 0-6M17 14c3 0 5 2 5 5",
-  };
+const iconPaths: Record<IconName, string> = {
+  dashboard: "M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z",
+  land: "M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5Zm6-2.5v13.5M15 6.5V20",
+  sprout: "M12 21v-9m0 2c-4 0-7-2-7-6 4 0 7 2 7 6Zm0-3c4 0 7-2 7-6-4 0-7 2-7 6Z",
+  harvest: "M5 20h14M7 20V9m4 11V5m4 15V8m4 12V4M5 9c2 0 4 1 6 3m0-7c2 0 3 1 4 3m0 0c2-1 3-2 4-4",
+  sales: "M4 7h16v12H4V7Zm3 0V5h10v2m-9 5h8m-8 3h5",
+  finance: "M4 19V10m6 9V5m6 14v-6m4 6H2",
+  share: "M8 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.5-7.5 3 3",
+  team: "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM2 21c0-4 3-7 7-7s7 3 7 7m8-10a3 3 0 1 0 0-6m0 9c3 0 5 2 5 5",
+  menu: "M4 7h16M4 12h16M4 17h16",
+  close: "m6 6 12 12M18 6 6 18",
+  collapse: "m14 7-5 5 5 5",
+  expand: "m10 7 5 5-5 5",
+  sun: "M12 4V2m0 20v-2m8-8h2M2 12h2m13.7-5.7 1.4-1.4M4.9 19.1l1.4-1.4m11.4 0 1.4 1.4M4.9 4.9l1.4 1.4M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
+  moon: "M20 15.2A8 8 0 0 1 8.8 4 8 8 0 1 0 20 15.2Z",
+  chevron: "m8 10 4 4 4-4",
+  logout: "M10 17l5-5-5-5m5 5H3m11-8h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5",
+  shield: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm-3-10 2 2 4-4",
+  check: "m5 12 4 4L19 6",
+  trend: "m4 17 5-5 4 4 7-8m-5 0h5v5",
+  wallet: "M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12m4 7h-5a2 2 0 0 0 0 4h5",
+};
 
+function AppIcon({ name }: { name: IconName }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d={paths[name]} />
+      <path d={iconPaths[name]} />
     </svg>
   );
 }
@@ -48,6 +97,10 @@ export function DashboardShell() {
   const [state, setState] = useState<DashboardState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isMobileNavigationOpen, setIsMobileNavigationOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemePreference>("light");
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +113,9 @@ export function DashboardShell() {
           ? await getOrganization(membership.organizationId)
           : null;
 
-        if (!cancelled) setState({ user, membership, organization });
+        if (!cancelled) {
+          setState({ user, membership, organization });
+        }
       } catch (error) {
         if (error instanceof ApiError && error.status === 401) {
           router.replace("/login");
@@ -80,23 +135,72 @@ export function DashboardShell() {
     };
   }, [router]);
 
+  useEffect(() => {
+    const animationFrame = window.requestAnimationFrame(() => {
+      setTheme(readThemePreference());
+      setIsSidebarCollapsed(readSidebarCollapsed());
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, []);
+
+  useEffect(() => {
+    function closeTransientNavigation(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMobileNavigationOpen(false);
+        setIsProfileOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", closeTransientNavigation);
+    return () => window.removeEventListener("keydown", closeTransientNavigation);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileNavigationOpen) {
+      return;
+    }
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isMobileNavigationOpen]);
+
   const visibleNavigation = useMemo(() => {
-    if (!state?.membership) return navigation.slice(0, 1);
-    return navigation.filter((item) => !item.permission || hasPermission(state.membership!, item.permission));
+    if (!state?.membership) {
+      return navigation.slice(0, 1);
+    }
+
+    return navigation.filter(
+      (item) => !item.permission || hasPermission(state.membership!, item.permission),
+    );
   }, [state]);
 
   async function changeOrganization(organizationId: string) {
-    if (!state) return;
+    if (!state) {
+      return;
+    }
 
-    const membership = state.user.memberships.find((item) => item.organizationId === organizationId);
-    if (!membership) return;
+    const membership = state.user.memberships.find(
+      (item) => item.organizationId === organizationId,
+    );
+
+    if (!membership) {
+      return;
+    }
 
     setSelectedOrganizationId(organizationId);
     setErrorMessage(null);
+    setIsProfileOpen(false);
 
     try {
       const organization = await getOrganization(organizationId);
-      setState({ ...state, membership, organization });
+      setState((current) => current
+        ? { ...current, membership, organization }
+        : current);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Organisasi gagal dimuat.");
     }
@@ -117,95 +221,309 @@ export function DashboardShell() {
     }
   }
 
+  function toggleTheme() {
+    const nextTheme: ThemePreference = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    setThemePreference(nextTheme);
+  }
+
+  function toggleSidebar() {
+    const nextValue = !isSidebarCollapsed;
+    setIsSidebarCollapsed(nextValue);
+    setSidebarCollapsed(nextValue);
+  }
+
   if (!state) {
     return (
       <main className="gate">
         <div className="gate__card">
-          {errorMessage ? <div className="alert alert--error">{errorMessage}</div> : <><span className="loader" /><p>Memuat ruang kerja...</p></>}
+          {errorMessage
+            ? <div className="alert alert--error">{errorMessage}</div>
+            : <><span className="loader" /><p>Memuat ruang kerja...</p></>}
         </div>
       </main>
     );
   }
 
-  const firstName = state.user.email.split("@")[0];
+  const firstName = state.user.email.split("@")[0].replace(/[._-]+/g, " ");
+  const roleLabel = state.membership
+    ? getRoleLabel(state.membership.role)
+    : "Tanpa organisasi";
+  const sidebarClassName = [
+    styles.sidebar,
+    isSidebarCollapsed ? styles.sidebarCollapsed : "",
+    isMobileNavigationOpen ? styles.sidebarOpen : "",
+  ].filter(Boolean).join(" ");
 
   return (
-    <div className="dashboard-layout">
-      <aside className="sidebar">
-        <BrandMark />
-        <nav className="sidebar__nav" aria-label="Navigasi utama">
-          {visibleNavigation.map((item, index) => (
-            <button key={item.label} className={`nav-item ${index === 0 ? "nav-item--active" : ""}`} type="button">
-              <span className="nav-item__icon"><NavigationIcon name={item.icon} /></span>
-              <span><strong>{item.label}</strong><small>{item.caption}</small></span>
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar__footer">
-          <span className="connection-dot" /> API terhubung melalui proxy aman
+    <div
+      className={`${styles.shell} ${isSidebarCollapsed ? styles.shellCollapsed : ""}`}
+      data-theme={theme}
+    >
+      <button
+        className={`${styles.drawerBackdrop} ${isMobileNavigationOpen ? styles.drawerBackdropVisible : ""}`}
+        type="button"
+        aria-label="Tutup navigasi"
+        tabIndex={isMobileNavigationOpen ? 0 : -1}
+        onClick={() => setIsMobileNavigationOpen(false)}
+      />
+
+      <aside className={sidebarClassName} aria-label="Navigasi aplikasi">
+        <div className={styles.sidebarHeader}>
+          <div className={styles.brandHolder}>
+            <BrandMark compact={isSidebarCollapsed && !isMobileNavigationOpen} />
+          </div>
+          <button
+            className={styles.mobileCloseButton}
+            type="button"
+            aria-label="Tutup navigasi"
+            onClick={() => setIsMobileNavigationOpen(false)}
+          >
+            <AppIcon name="close" />
+          </button>
         </div>
+
+        <div className={styles.navigationLabel}>Menu utama</div>
+        <nav className={styles.navigation}>
+          {visibleNavigation.map((item, index) => {
+            const isActive = index === 0;
+
+            return (
+              <button
+                key={item.label}
+                className={`${styles.navigationItem} ${isActive ? styles.navigationItemActive : ""}`}
+                type="button"
+                disabled={!isActive}
+                aria-current={isActive ? "page" : undefined}
+                title={isSidebarCollapsed ? item.label : undefined}
+                onClick={() => setIsMobileNavigationOpen(false)}
+              >
+                <span className={styles.navigationIcon}><AppIcon name={item.icon} /></span>
+                <span className={styles.navigationCopy}>
+                  <strong>{item.label}</strong>
+                  <small>{item.caption}</small>
+                </span>
+                {!isActive && <span className={styles.soonBadge}>Segera</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className={styles.sidebarStatus}>
+          <span className={styles.connectionDot} />
+          <span>
+            <strong>API terhubung</strong>
+            <small>Cookie &amp; CSRF aman</small>
+          </span>
+        </div>
+
+        <button
+          className={styles.collapseButton}
+          type="button"
+          aria-label={isSidebarCollapsed ? "Perlebar sidebar" : "Perkecil sidebar"}
+          onClick={toggleSidebar}
+        >
+          <AppIcon name={isSidebarCollapsed ? "expand" : "collapse"} />
+        </button>
       </aside>
 
-      <main className="dashboard-main">
-        <header className="topbar">
-          <div className="organization-switcher">
-            <span>Organisasi aktif</span>
-            <select value={state.membership?.organizationId ?? ""} onChange={(event) => void changeOrganization(event.target.value)} disabled={state.user.memberships.length === 0}>
-              {state.user.memberships.map((membership) => (
-                <option value={membership.organizationId} key={membership.membershipId}>
-                  {membership.organizationId === state.organization?.id ? state.organization.name : membership.organizationId}
-                </option>
-              ))}
-            </select>
+      <div className={styles.workspace}>
+        <header className={styles.topbar}>
+          <div className={styles.topbarStart}>
+            <button
+              className={styles.mobileMenuButton}
+              type="button"
+              aria-label="Buka navigasi"
+              aria-expanded={isMobileNavigationOpen}
+              onClick={() => setIsMobileNavigationOpen(true)}
+            >
+              <AppIcon name="menu" />
+            </button>
+
+            <div className={styles.organizationSwitcher}>
+              <span>Organisasi aktif</span>
+              <select
+                value={state.membership?.organizationId ?? ""}
+                onChange={(event) => void changeOrganization(event.target.value)}
+                disabled={state.user.memberships.length === 0}
+                aria-label="Pilih organisasi aktif"
+              >
+                {state.user.memberships.map((membership) => (
+                  <option value={membership.organizationId} key={membership.membershipId}>
+                    {membership.organizationId === state.organization?.id
+                      ? state.organization.name
+                      : `Organisasi ${membership.organizationId.slice(0, 8)}`}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="user-menu">
-            <span className="avatar">{state.user.email.slice(0, 1).toUpperCase()}</span>
-            <span className="user-menu__copy"><strong>{firstName}</strong><small>{state.membership ? getRoleLabel(state.membership.role) : "Tanpa organisasi"}</small></span>
-            <button type="button" onClick={() => void handleLogout()} disabled={isSigningOut}>{isSigningOut ? "Keluar..." : "Keluar"}</button>
+
+          <div className={styles.topbarActions}>
+            <span className={styles.roleBadge}>
+              <AppIcon name="shield" />
+              {roleLabel}
+            </span>
+            <button
+              className={styles.iconButton}
+              type="button"
+              aria-label={theme === "dark" ? "Gunakan tema terang" : "Gunakan tema gelap"}
+              onClick={toggleTheme}
+            >
+              <AppIcon name={theme === "dark" ? "sun" : "moon"} />
+            </button>
+
+            <div className={styles.profileArea}>
+              <button
+                className={styles.profileButton}
+                type="button"
+                aria-expanded={isProfileOpen}
+                onClick={() => setIsProfileOpen((current) => !current)}
+              >
+                <span className={styles.avatar}>{state.user.email.slice(0, 1).toUpperCase()}</span>
+                <span className={styles.profileCopy}>
+                  <strong>{firstName}</strong>
+                  <small>{state.user.email}</small>
+                </span>
+                <span className={styles.profileChevron}><AppIcon name="chevron" /></span>
+              </button>
+
+              {isProfileOpen && (
+                <div className={styles.profileMenu}>
+                  <div className={styles.profileMenuIdentity}>
+                    <span className={styles.avatar}>{state.user.email.slice(0, 1).toUpperCase()}</span>
+                    <span>
+                      <strong>{firstName}</strong>
+                      <small>{state.user.email}</small>
+                    </span>
+                  </div>
+                  <div className={styles.profileMenuRole}>
+                    <AppIcon name="shield" />
+                    <span><small>Peran aktif</small><strong>{roleLabel}</strong></span>
+                  </div>
+                  <button
+                    className={styles.logoutButton}
+                    type="button"
+                    disabled={isSigningOut}
+                    onClick={() => void handleLogout()}
+                  >
+                    <AppIcon name="logout" />
+                    {isSigningOut ? "Keluar..." : "Keluar dari SiPacul"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        <section className="dashboard-content">
-          {errorMessage && <div className="alert alert--error" role="alert">{errorMessage}</div>}
+        <main className={styles.content}>
+          {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
 
-          <div className="welcome-row">
+          <section className={styles.welcomeSection}>
             <div>
-              <span className="eyebrow">Ruang kerja agribisnis</span>
-              <h1>Selamat pagi, {firstName}.</h1>
-              <p>{state.organization ? `Pantau kegiatan ${state.organization.name} dari satu tempat.` : "Akun ini belum memiliki membership organisasi aktif."}</p>
+              <span className={styles.eyebrow}>Dashboard operasional</span>
+              <h1>Selamat datang, {firstName}.</h1>
+              <p>
+                {state.organization
+                  ? `Pantau kegiatan ${state.organization.name} dari satu ruang kerja.`
+                  : "Akun ini belum memiliki membership organisasi aktif."}
+              </p>
             </div>
-            <div className="season-chip"><span>Musim berjalan</span><strong>Siap dicatat</strong></div>
-          </div>
+            <div className={styles.seasonStatus}>
+              <span className={styles.seasonIcon}><AppIcon name="sprout" /></span>
+              <span><small>Musim berjalan</small><strong>Siap dicatat</strong></span>
+            </div>
+          </section>
 
-          <div className="metric-grid">
-            <article className="metric-card metric-card--green"><span>Lahan aktif</span><strong>â€”</strong><small>Menunggu integrasi modul</small></article>
-            <article className="metric-card"><span>Siklus berjalan</span><strong>â€”</strong><small>Data backend siap dihubungkan</small></article>
-            <article className="metric-card"><span>Biaya musim ini</span><strong>Rp â€”</strong><small>Keuangan akan tampil di sini</small></article>
-            <article className="metric-card"><span>Proyeksi hasil</span><strong>â€”</strong><small>Berbasis catatan lapangan</small></article>
-          </div>
+          <section className={styles.metricGrid} aria-label="Ringkasan usaha">
+            <article className={`${styles.metricCard} ${styles.metricCardPrimary}`}>
+              <span className={styles.metricIcon}><AppIcon name="land" /></span>
+              <span className={styles.metricLabel}>Lahan aktif</span>
+              <strong>—</strong>
+              <small>Menunggu integrasi modul lahan</small>
+            </article>
+            <article className={styles.metricCard}>
+              <span className={styles.metricIcon}><AppIcon name="sprout" /></span>
+              <span className={styles.metricLabel}>Siklus berjalan</span>
+              <strong>—</strong>
+              <small>Belum ada data budidaya</small>
+            </article>
+            <article className={styles.metricCard}>
+              <span className={styles.metricIcon}><AppIcon name="wallet" /></span>
+              <span className={styles.metricLabel}>Biaya musim ini</span>
+              <strong>Rp —</strong>
+              <small>Data keuangan belum dihubungkan</small>
+            </article>
+            <article className={styles.metricCard}>
+              <span className={styles.metricIcon}><AppIcon name="trend" /></span>
+              <span className={styles.metricLabel}>Proyeksi hasil</span>
+              <strong>—</strong>
+              <small>Akan dihitung dari catatan lapangan</small>
+            </article>
+          </section>
 
-          <div className="dashboard-grid">
-            <article className="panel panel--wide">
-              <div className="panel__header"><div><span className="eyebrow">Alur musim</span><h2>Dari lahan hingga evaluasi</h2></div><span className="status-pill">Fondasi siap</span></div>
-              <div className="process-track">
-                {["Lahan", "SOP", "Budidaya", "Panen", "Penjualan", "Evaluasi"].map((step, index) => (
-                  <div key={step} className={index === 0 ? "process-step process-step--active" : "process-step"}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step}</strong></div>
+          <section className={styles.dashboardGrid}>
+            <article className={`${styles.panel} ${styles.processPanel}`}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Alur satu musim</span>
+                  <h2>Dari lahan hingga evaluasi</h2>
+                </div>
+                <span className={styles.readyBadge}><AppIcon name="check" /> Fondasi siap</span>
+              </div>
+              <div className={styles.processTrack}>
+                {[
+                  ["Lahan", "Lokasi & petak"],
+                  ["SOP", "Rencana kerja"],
+                  ["Budidaya", "Aktivitas lapangan"],
+                  ["Panen", "Hasil & mutu"],
+                  ["Penjualan", "Pendapatan"],
+                  ["Evaluasi", "Pelajaran musim"],
+                ].map(([step, caption], index) => (
+                  <div
+                    key={step}
+                    className={`${styles.processStep} ${index === 0 ? styles.processStepActive : ""}`}
+                  >
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <strong>{step}</strong>
+                    <small>{caption}</small>
+                  </div>
                 ))}
               </div>
             </article>
 
-            <article className="panel">
-              <div className="panel__header"><div><span className="eyebrow">Akses akun</span><h2>Membership aktif</h2></div></div>
-              <dl className="detail-list">
+            <article className={`${styles.panel} ${styles.membershipPanel}`}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Konteks akses</span>
+                  <h2>Membership aktif</h2>
+                </div>
+                <span className={styles.shieldTile}><AppIcon name="shield" /></span>
+              </div>
+              <dl className={styles.detailList}>
                 <div><dt>Organisasi</dt><dd>{state.organization?.name ?? "Belum tersedia"}</dd></div>
-                <div><dt>Kode</dt><dd>{state.organization?.code ?? "â€”"}</dd></div>
-                <div><dt>Peran</dt><dd>{state.membership ? getRoleLabel(state.membership.role) : "â€”"}</dd></div>
+                <div><dt>Kode</dt><dd>{state.organization?.code ?? "—"}</dd></div>
+                <div><dt>Peran</dt><dd>{roleLabel}</dd></div>
                 <div><dt>Permission</dt><dd>{state.membership?.permissions.length ?? 0} izin</dd></div>
               </dl>
             </article>
-          </div>
-        </section>
-      </main>
+
+            <article className={`${styles.panel} ${styles.nextPanel}`}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <span className={styles.eyebrow}>Tahap berikutnya</span>
+                  <h2>Bangun data operasional</h2>
+                </div>
+              </div>
+              <div className={styles.nextSteps}>
+                <div><span>01</span><p><strong>Daftarkan lahan dan petak</strong><small>Menjadi dasar histori tanaman per lokasi.</small></p></div>
+                <div><span>02</span><p><strong>Hubungkan komoditas dan SOP</strong><small>Menyusun rencana budidaya yang konsisten.</small></p></div>
+                <div><span>03</span><p><strong>Mulai siklus budidaya</strong><small>Mencatat aktivitas, biaya, panen, dan evaluasi.</small></p></div>
+              </div>
+            </article>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
