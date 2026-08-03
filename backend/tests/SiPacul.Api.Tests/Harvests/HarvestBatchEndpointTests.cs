@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Harvests;
 using SiPacul.Application.Harvests.Contracts;
 using SiPacul.Application.Harvests.Services;
@@ -495,6 +497,77 @@ public sealed class HarvestBatchEndpointTests
             service.LastHarvestBatchId);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var service = new StubService();
+        using var factory =
+            new HarvestBatchApiFactory(service);
+
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            BasePath);
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        var service = new StubService();
+        using var factory =
+            new HarvestBatchApiFactory(service);
+
+        factory.Authorization.Granted = false;
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(BasePath);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.HarvestRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        var service = new StubService();
+        using var factory =
+            new HarvestBatchApiFactory(service);
+
+        factory.Authorization.Granted = false;
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.PostAsJsonAsync(
+            BasePath,
+            CreateRequest());
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.HarvestWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static string BasePath =>
         $"/api/v1/organizations/{OrganizationId}" +
         $"/crop-cycles/{CropCycleId}/harvest-batches";
@@ -773,11 +846,18 @@ public sealed class HarvestBatchEndpointTests
             _service = service;
         }
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         protected override void ConfigureWebHost(
             IWebHostBuilder builder)
         {
             builder.ConfigureTestServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<
                     IHarvestBatchService>();
 

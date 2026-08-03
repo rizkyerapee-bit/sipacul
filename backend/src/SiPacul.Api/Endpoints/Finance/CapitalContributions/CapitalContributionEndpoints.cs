@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Finance.CapitalContributions.Contracts;
 using SiPacul.Application.Finance.CapitalContributions.Services;
 using SiPacul.Domain.Entities.Finance;
@@ -23,6 +25,8 @@ public static class CapitalContributionEndpoints
 
         group.MapPost(string.Empty, CreateAsync)
             .WithName("CapitalContributions.Create")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CapitalContributionResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -34,6 +38,8 @@ public static class CapitalContributionEndpoints
 
         group.MapGet(string.Empty, GetAllAsync)
             .WithName("CapitalContributions.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<
                 IReadOnlyList<CapitalContributionResponse>>(
                 StatusCodes.Status200OK)
@@ -46,6 +52,8 @@ public static class CapitalContributionEndpoints
                 "/{contributionId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<CapitalContributionResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -58,6 +66,8 @@ public static class CapitalContributionEndpoints
                 UpdateDraftAsync)
             .WithName(
                 "CapitalContributions.UpdateDraft")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CapitalContributionResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -71,6 +81,8 @@ public static class CapitalContributionEndpoints
                 "/{contributionId:guid}/confirm",
                 ConfirmAsync)
             .WithName("CapitalContributions.Confirm")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CapitalContributionResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -84,6 +96,8 @@ public static class CapitalContributionEndpoints
                 "/{contributionId:guid}/cancel",
                 CancelAsync)
             .WithName("CapitalContributions.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CapitalContributionResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

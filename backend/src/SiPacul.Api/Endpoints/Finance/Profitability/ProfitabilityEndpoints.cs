@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Finance.Profitability.Contracts;
 using SiPacul.Application.Finance.Profitability.Services;
 
@@ -22,6 +24,8 @@ public static class ProfitabilityEndpoints
                 GetCropCycleReportAsync)
             .WithName(
                 "Profitability.GetCropCycleReport")
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<CropCycleProfitabilityResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

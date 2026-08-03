@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Finance.ProfitSharing.Contracts;
 using SiPacul.Application.Finance.ProfitSharing.Services;
 using SiPacul.Domain.Entities.Finance.ProfitSharing;
@@ -25,6 +27,8 @@ public static class ProfitSharingSettlementEndpoints
         group.MapPost(string.Empty, CreateDraftAsync)
             .WithName(
                 "ProfitSharingSettlements.CreateDraft")
+            .RequireOrganizationPermission(
+                Permissions.ProfitSharingWrite)
             .Produces<ProfitSharingSettlementResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -37,6 +41,8 @@ public static class ProfitSharingSettlementEndpoints
         group.MapGet(string.Empty, GetAllAsync)
             .WithName(
                 "ProfitSharingSettlements.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.ProfitSharingRead)
             .Produces<
                 IReadOnlyList<
                     ProfitSharingSettlementResponse>>(
@@ -50,6 +56,8 @@ public static class ProfitSharingSettlementEndpoints
                 "/{settlementId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.ProfitSharingRead)
             .Produces<ProfitSharingSettlementResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -62,6 +70,8 @@ public static class ProfitSharingSettlementEndpoints
                 UpdateDraftAsync)
             .WithName(
                 "ProfitSharingSettlements.UpdateDraft")
+            .RequireOrganizationPermission(
+                Permissions.ProfitSharingWrite)
             .Produces<ProfitSharingSettlementResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -76,6 +86,8 @@ public static class ProfitSharingSettlementEndpoints
                 FinalizeAsync)
             .WithName(
                 "ProfitSharingSettlements.Finalize")
+            .RequireOrganizationPermission(
+                Permissions.ProfitSharingFinalize)
             .Produces<ProfitSharingSettlementResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -90,6 +102,8 @@ public static class ProfitSharingSettlementEndpoints
                 VoidAsync)
             .WithName(
                 "ProfitSharingSettlements.Void")
+            .RequireOrganizationPermission(
+                Permissions.ProfitSharingVoid)
             .Produces<ProfitSharingSettlementResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

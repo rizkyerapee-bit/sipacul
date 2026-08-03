@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Tests.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Finance.SalePayments;
 using SiPacul.Application.Finance.SalePayments.Contracts;
 using SiPacul.Application.Finance.SalePayments.Services;
@@ -492,6 +494,71 @@ public sealed class SalePaymentEndpointTests
             response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetAll_WithoutAuthentication_ShouldReturnUnauthorized()
+    {
+        var service = new StubService();
+        using var factory = new ApiFactory(service);
+        using var client = factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            BasePath);
+
+        request.Headers.Add(
+            OrganizationAuthorizationTestSupport
+                .UnauthenticatedHeaderName,
+            "true");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            response.StatusCode);
+
+        Assert.Equal(0, factory.Authorization.CallCount);
+    }
+
+    [Fact]
+    public async Task GetAll_WithoutReadPermission_ShouldReturnForbidden()
+    {
+        var service = new StubService();
+        using var factory = new ApiFactory(service);
+        factory.Authorization.Granted = false;
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.GetAsync(BasePath);
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.FinanceRead,
+            factory.Authorization.LastPermission);
+    }
+
+    [Fact]
+    public async Task Create_WithoutWritePermission_ShouldReturnForbidden()
+    {
+        var service = new StubService();
+        using var factory = new ApiFactory(service);
+        factory.Authorization.Granted = false;
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.PostAsJsonAsync(
+            BasePath,
+            CreateRequest());
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        Assert.Equal(
+            Permissions.FinanceWrite,
+            factory.Authorization.LastPermission);
+    }
+
     private static string BasePath =>
         $"/api/v1/organizations/{OrganizationId}/" +
         $"sales/{SaleId}/payments";
@@ -778,11 +845,18 @@ public sealed class SalePaymentEndpointTests
             _service = service;
         }
 
+        public ConfigurableOrganizationPermissionService
+            Authorization
+        { get; } = new();
+
         protected override void ConfigureWebHost(
             IWebHostBuilder builder)
         {
             builder.ConfigureTestServices(services =>
             {
+                services.AddOrganizationAuthorizationForTests(
+                    Authorization);
+
                 services.RemoveAll<ISalePaymentService>();
                 services.AddSingleton(_service);
             });

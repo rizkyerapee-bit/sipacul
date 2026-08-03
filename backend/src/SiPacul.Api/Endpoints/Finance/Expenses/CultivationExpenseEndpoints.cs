@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Finance.Expenses.Contracts;
 using SiPacul.Application.Finance.Expenses.Services;
 using SiPacul.Domain.Entities.Finance;
@@ -23,6 +25,8 @@ public static class CultivationExpenseEndpoints
 
         group.MapPost(string.Empty, CreateAsync)
             .WithName("CultivationExpenses.Create")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CultivationExpenseResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -34,6 +38,8 @@ public static class CultivationExpenseEndpoints
 
         group.MapGet(string.Empty, GetAllAsync)
             .WithName("CultivationExpenses.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<
                 IReadOnlyList<CultivationExpenseResponse>>(
                 StatusCodes.Status200OK)
@@ -46,6 +52,8 @@ public static class CultivationExpenseEndpoints
                 "/{expenseId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<CultivationExpenseResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -58,6 +66,8 @@ public static class CultivationExpenseEndpoints
                 UpdateDraftAsync)
             .WithName(
                 "CultivationExpenses.UpdateDraft")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CultivationExpenseResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -71,6 +81,8 @@ public static class CultivationExpenseEndpoints
                 "/{expenseId:guid}/confirm",
                 ConfirmAsync)
             .WithName("CultivationExpenses.Confirm")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CultivationExpenseResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -84,6 +96,8 @@ public static class CultivationExpenseEndpoints
                 "/{expenseId:guid}/cancel",
                 CancelAsync)
             .WithName("CultivationExpenses.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<CultivationExpenseResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

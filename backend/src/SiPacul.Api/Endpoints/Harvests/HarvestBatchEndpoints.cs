@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Harvests.Contracts;
 using SiPacul.Application.Harvests.Services;
 using SiPacul.Domain.Entities.Harvests;
@@ -25,6 +27,8 @@ public static class HarvestBatchEndpoints
                 string.Empty,
                 CreateAsync)
             .WithName("HarvestBatches.Create")
+            .RequireOrganizationPermission(
+                Permissions.HarvestWrite)
             .Produces<HarvestBatchResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -38,6 +42,8 @@ public static class HarvestBatchEndpoints
                 string.Empty,
                 GetAllAsync)
             .WithName("HarvestBatches.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.HarvestRead)
             .Produces<
                 IReadOnlyList<HarvestBatchResponse>>(
                 StatusCodes.Status200OK)
@@ -50,6 +56,8 @@ public static class HarvestBatchEndpoints
                 "/{harvestBatchId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.HarvestRead)
             .Produces<HarvestBatchResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -61,6 +69,8 @@ public static class HarvestBatchEndpoints
                 "/{harvestBatchId:guid}",
                 UpdateDraftAsync)
             .WithName("HarvestBatches.UpdateDraft")
+            .RequireOrganizationPermission(
+                Permissions.HarvestWrite)
             .Produces<HarvestBatchResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -74,6 +84,8 @@ public static class HarvestBatchEndpoints
                 "/{harvestBatchId:guid}/confirm",
                 ConfirmAsync)
             .WithName("HarvestBatches.Confirm")
+            .RequireOrganizationPermission(
+                Permissions.HarvestWrite)
             .Produces<HarvestBatchResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -87,6 +99,8 @@ public static class HarvestBatchEndpoints
                 "/{harvestBatchId:guid}/cancel",
                 CancelAsync)
             .WithName("HarvestBatches.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.HarvestWrite)
             .Produces<HarvestBatchResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Sales.Contracts;
 using SiPacul.Application.Sales.Services;
 using SiPacul.Domain.Entities.Sales;
@@ -23,6 +25,8 @@ public static class SaleEndpoints
                 string.Empty,
                 CreateAsync)
             .WithName("Sales.Create")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -36,6 +40,8 @@ public static class SaleEndpoints
                 string.Empty,
                 GetAllAsync)
             .WithName("Sales.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.SalesRead)
             .Produces<IReadOnlyList<SaleResponse>>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -47,6 +53,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.SalesRead)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -56,6 +64,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}",
                 UpdateDraftAsync)
             .WithName("Sales.UpdateDraft")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -69,6 +79,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}/lines",
                 AddLineAsync)
             .WithName("Sales.AddLine")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -82,6 +94,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}/lines/{saleLineId:guid}",
                 UpdateLineAsync)
             .WithName("Sales.UpdateLine")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -95,6 +109,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}/lines/{saleLineId:guid}",
                 RemoveLineAsync)
             .WithName("Sales.RemoveLine")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -106,6 +122,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}/confirm",
                 ConfirmAsync)
             .WithName("Sales.Confirm")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -119,6 +137,8 @@ public static class SaleEndpoints
                 "/{saleId:guid}/cancel",
                 CancelAsync)
             .WithName("Sales.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.SalesWrite)
             .Produces<SaleResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(

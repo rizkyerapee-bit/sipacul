@@ -1,4 +1,6 @@
 using SiPacul.Api.Common.Http;
+using SiPacul.Api.Security.Authorization;
+using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Finance.SalePayments.Contracts;
 using SiPacul.Application.Finance.SalePayments.Services;
 using SiPacul.Domain.Entities.Finance;
@@ -23,6 +25,8 @@ public static class SalePaymentEndpoints
 
         group.MapPost(string.Empty, CreateAsync)
             .WithName("SalePayments.Create")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<SalePaymentResponse>(
                 StatusCodes.Status201Created)
             .ProducesProblem(
@@ -34,6 +38,8 @@ public static class SalePaymentEndpoints
 
         group.MapGet(string.Empty, GetAllAsync)
             .WithName("SalePayments.GetAll")
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<
                 IReadOnlyList<SalePaymentResponse>>(
                 StatusCodes.Status200OK)
@@ -46,6 +52,8 @@ public static class SalePaymentEndpoints
                 "/receivable",
                 GetReceivableAsync)
             .WithName("SalePayments.GetReceivable")
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<SaleReceivableResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -59,6 +67,8 @@ public static class SalePaymentEndpoints
                 "/{paymentId:guid}",
                 GetByIdAsync)
             .WithName(GetByIdRouteName)
+            .RequireOrganizationPermission(
+                Permissions.FinanceRead)
             .Produces<SalePaymentResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -70,6 +80,8 @@ public static class SalePaymentEndpoints
                 "/{paymentId:guid}",
                 UpdateDraftAsync)
             .WithName("SalePayments.UpdateDraft")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<SalePaymentResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -83,6 +95,8 @@ public static class SalePaymentEndpoints
                 "/{paymentId:guid}/confirm",
                 ConfirmAsync)
             .WithName("SalePayments.Confirm")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<SalePaymentResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
@@ -96,6 +110,8 @@ public static class SalePaymentEndpoints
                 "/{paymentId:guid}/cancel",
                 CancelAsync)
             .WithName("SalePayments.Cancel")
+            .RequireOrganizationPermission(
+                Permissions.FinanceWrite)
             .Produces<SalePaymentResponse>(
                 StatusCodes.Status200OK)
             .ProducesProblem(
