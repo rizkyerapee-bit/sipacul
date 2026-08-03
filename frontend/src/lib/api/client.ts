@@ -4,7 +4,12 @@ import type {
   BootstrapOwnerRequest,
   BootstrapOwnerResponse,
   BootstrapStatus,
+  CropCycle,
+  CropCycleProfitability,
+  CultivationActivity,
   CurrentUser,
+  HarvestBatch,
+  Land,
   LoginRequest,
   Organization,
 } from "@/lib/api/contracts";
@@ -126,5 +131,64 @@ export function getOrganization(
 ): Promise<Organization> {
   return apiRequest<Organization>(
     `/organizations/${encodeURIComponent(organizationId)}`,
+  );
+}
+
+function getOrganizationResourcePath(
+  organizationId: string,
+  resourcePath: string,
+): string {
+  return `/organizations/${encodeURIComponent(organizationId)}${resourcePath}`;
+}
+
+export function getLands(
+  organizationId: string,
+): Promise<Land[]> {
+  return apiRequest<Land[]>(
+    getOrganizationResourcePath(organizationId, "/lands"),
+  );
+}
+
+export function getCropCycles(
+  organizationId: string,
+): Promise<CropCycle[]> {
+  return apiRequest<CropCycle[]>(
+    getOrganizationResourcePath(organizationId, "/crop-cycles"),
+  );
+}
+
+export function getCultivationActivities(
+  organizationId: string,
+  cropCycleId: string,
+): Promise<CultivationActivity[]> {
+  return apiRequest<CultivationActivity[]>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/activities`,
+    ),
+  );
+}
+
+export function getHarvestBatches(
+  organizationId: string,
+  cropCycleId: string,
+): Promise<HarvestBatch[]> {
+  return apiRequest<HarvestBatch[]>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/harvest-batches`,
+    ),
+  );
+}
+
+export function getCropCycleProfitability(
+  organizationId: string,
+  cropCycleId: string,
+): Promise<CropCycleProfitability> {
+  return apiRequest<CropCycleProfitability>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/profitability`,
+    ),
   );
 }

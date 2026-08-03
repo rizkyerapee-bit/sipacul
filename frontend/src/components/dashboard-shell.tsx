@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
+import { DashboardOverview } from "@/components/dashboard-overview";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
 import { getRoleLabel, hasPermission, resolveSelectedMembership, setSelectedOrganizationId } from "@/lib/session/organization-selection";
@@ -418,110 +419,13 @@ export function DashboardShell() {
 
         <main className={styles.content}>
           {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
-
-          <section className={styles.welcomeSection}>
-            <div>
-              <span className={styles.eyebrow}>Dashboard operasional</span>
-              <h1>Selamat datang, {firstName}.</h1>
-              <p>
-                {state.organization
-                  ? `Pantau kegiatan ${state.organization.name} dari satu ruang kerja.`
-                  : "Akun ini belum memiliki membership organisasi aktif."}
-              </p>
-            </div>
-            <div className={styles.seasonStatus}>
-              <span className={styles.seasonIcon}><AppIcon name="sprout" /></span>
-              <span><small>Musim berjalan</small><strong>Siap dicatat</strong></span>
-            </div>
-          </section>
-
-          <section className={styles.metricGrid} aria-label="Ringkasan usaha">
-            <article className={`${styles.metricCard} ${styles.metricCardPrimary}`}>
-              <span className={styles.metricIcon}><AppIcon name="land" /></span>
-              <span className={styles.metricLabel}>Lahan aktif</span>
-              <strong>—</strong>
-              <small>Menunggu integrasi modul lahan</small>
-            </article>
-            <article className={styles.metricCard}>
-              <span className={styles.metricIcon}><AppIcon name="sprout" /></span>
-              <span className={styles.metricLabel}>Siklus berjalan</span>
-              <strong>—</strong>
-              <small>Belum ada data budidaya</small>
-            </article>
-            <article className={styles.metricCard}>
-              <span className={styles.metricIcon}><AppIcon name="wallet" /></span>
-              <span className={styles.metricLabel}>Biaya musim ini</span>
-              <strong>Rp —</strong>
-              <small>Data keuangan belum dihubungkan</small>
-            </article>
-            <article className={styles.metricCard}>
-              <span className={styles.metricIcon}><AppIcon name="trend" /></span>
-              <span className={styles.metricLabel}>Proyeksi hasil</span>
-              <strong>—</strong>
-              <small>Akan dihitung dari catatan lapangan</small>
-            </article>
-          </section>
-
-          <section className={styles.dashboardGrid}>
-            <article className={`${styles.panel} ${styles.processPanel}`}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Alur satu musim</span>
-                  <h2>Dari lahan hingga evaluasi</h2>
-                </div>
-                <span className={styles.readyBadge}><AppIcon name="check" /> Fondasi siap</span>
-              </div>
-              <div className={styles.processTrack}>
-                {[
-                  ["Lahan", "Lokasi & petak"],
-                  ["SOP", "Rencana kerja"],
-                  ["Budidaya", "Aktivitas lapangan"],
-                  ["Panen", "Hasil & mutu"],
-                  ["Penjualan", "Pendapatan"],
-                  ["Evaluasi", "Pelajaran musim"],
-                ].map(([step, caption], index) => (
-                  <div
-                    key={step}
-                    className={`${styles.processStep} ${index === 0 ? styles.processStepActive : ""}`}
-                  >
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    <strong>{step}</strong>
-                    <small>{caption}</small>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className={`${styles.panel} ${styles.membershipPanel}`}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Konteks akses</span>
-                  <h2>Membership aktif</h2>
-                </div>
-                <span className={styles.shieldTile}><AppIcon name="shield" /></span>
-              </div>
-              <dl className={styles.detailList}>
-                <div><dt>Organisasi</dt><dd>{state.organization?.name ?? "Belum tersedia"}</dd></div>
-                <div><dt>Kode</dt><dd>{state.organization?.code ?? "—"}</dd></div>
-                <div><dt>Peran</dt><dd>{roleLabel}</dd></div>
-                <div><dt>Permission</dt><dd>{state.membership?.permissions.length ?? 0} izin</dd></div>
-              </dl>
-            </article>
-
-            <article className={`${styles.panel} ${styles.nextPanel}`}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <span className={styles.eyebrow}>Tahap berikutnya</span>
-                  <h2>Bangun data operasional</h2>
-                </div>
-              </div>
-              <div className={styles.nextSteps}>
-                <div><span>01</span><p><strong>Daftarkan lahan dan petak</strong><small>Menjadi dasar histori tanaman per lokasi.</small></p></div>
-                <div><span>02</span><p><strong>Hubungkan komoditas dan SOP</strong><small>Menyusun rencana budidaya yang konsisten.</small></p></div>
-                <div><span>03</span><p><strong>Mulai siklus budidaya</strong><small>Mencatat aktivitas, biaya, panen, dan evaluasi.</small></p></div>
-              </div>
-            </article>
-          </section>
+          <DashboardOverview
+            key={state.membership?.organizationId ?? "no-organization"}
+            firstName={firstName}
+            organization={state.organization}
+            organizationId={state.membership?.organizationId ?? null}
+            permissions={state.membership?.permissions ?? []}
+          />
         </main>
       </div>
     </div>

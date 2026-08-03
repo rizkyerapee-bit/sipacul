@@ -1,5 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, bootstrapOwner, getBootstrapStatus, getCurrentUser, getOrganization, login, logout } from "@/lib/api/client";
+import {
+  ApiError,
+  bootstrapOwner,
+  getBootstrapStatus,
+  getCropCycleProfitability,
+  getCropCycles,
+  getCultivationActivities,
+  getCurrentUser,
+  getHarvestBatches,
+  getLands,
+  getOrganization,
+  login,
+  logout,
+} from "@/lib/api/client";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -34,6 +47,45 @@ describe("SiPacul API client", () => {
 
     await getOrganization("org 1");
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/organizations/org%201");
+  });
+
+  it("reads organization dashboard collections with encoded identifiers", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]));
+
+    await getLands("org 1");
+    await getCropCycles("org 1");
+
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/organizations/org%201/lands");
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/organizations/org%201/crop-cycles");
+  });
+
+  it("reads selected-cycle dashboard sources with encoded identifiers", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ cropCycleId: "cycle 1" }));
+
+    await getCultivationActivities("org 1", "cycle 1");
+    await getHarvestBatches("org 1", "cycle 1");
+    await getCropCycleProfitability("org 1", "cycle 1");
+
+    const basePath = "/api/v1/organizations/org%201/crop-cycles/cycle%201";
+    expect(fetchMock.mock.calls[0][0]).toBe(`${basePath}/activities`);
+    expect(fetchMock.mock.calls[1][0]).toBe(`${basePath}/harvest-batches`);
+    expect(fetchMock.mock.calls[2][0]).toBe(`${basePath}/profitability`);
+  });
+
+  it("keeps dashboard reads cookie-based and uncached", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    await getLands("org-1");
+
+    expect(fetchMock.mock.calls[0][1]).toEqual(expect.objectContaining({
+      credentials: "include",
+      cache: "no-store",
+    }));
   });
 
   it("obtains a CSRF token before login", async () => {
