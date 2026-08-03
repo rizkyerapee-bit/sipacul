@@ -1,3 +1,4 @@
+using SiPacul.Application.Security.Authorization.Services;
 using SiPacul.Application.Security.Bootstrap.Services;
 using Microsoft.AspNetCore.Identity;
 using SiPacul.Application.Security.Authentication.Services;
@@ -164,6 +165,10 @@ public static class DependencyInjection
         services.AddScoped<
             IProfitSharingSettlementFinalizationProcessor,
             ProfitSharingSettlementFinalizationProcessor>();
+
+        services.AddScoped<
+            IOrganizationPermissionService,
+            OrganizationPermissionService>();
 
         return services;
     }

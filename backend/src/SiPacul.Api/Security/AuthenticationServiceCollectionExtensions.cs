@@ -1,3 +1,5 @@
+using SiPacul.Api.Security.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 
@@ -56,6 +58,14 @@ public static class AuthenticationServiceCollectionExtensions
                 });
 
         services.AddAuthorization();
+
+        services.AddSingleton<
+            IAuthorizationPolicyProvider,
+            OrganizationPermissionPolicyProvider>();
+
+        services.AddScoped<
+            IAuthorizationHandler,
+            OrganizationPermissionAuthorizationHandler>();
 
         services.AddAntiforgery(options =>
         {
