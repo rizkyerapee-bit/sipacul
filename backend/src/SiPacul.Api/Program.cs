@@ -16,6 +16,7 @@ using SiPacul.Api.Endpoints.Lands;
 using SiPacul.Api.Endpoints.MasterData.Commodities;
 using SiPacul.Api.Endpoints.MasterData.CommodityCategories;
 using SiPacul.Api.Endpoints.Organizations;
+using SiPacul.Api.Endpoints.Organizations.Members;
 using SiPacul.Application;
 using SiPacul.Infrastructure;
 
@@ -47,6 +48,7 @@ app.MapBootstrapEndpoints();
 
 app.MapAuthenticationEndpoints();
 app.MapOrganizationEndpoints();
+app.MapOrganizationMemberEndpoints();
 app.MapCommodityCategoryEndpoints();
 app.MapCommodityEndpoints();
 app.MapCultivationSopEndpoints();

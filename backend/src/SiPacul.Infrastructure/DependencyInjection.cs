@@ -2,6 +2,7 @@ using SiPacul.Application.Security.Authorization.Services;
 using SiPacul.Application.Security.Bootstrap.Services;
 using Microsoft.AspNetCore.Identity;
 using SiPacul.Application.Security.Authentication.Services;
+using SiPacul.Application.Organizations.Members.Services;
 using SiPacul.Infrastructure.Identity;
 using SiPacul.Application.Finance.ProfitSharing.Persistence;
 using SiPacul.Application.Finance.Profitability.Persistence;
@@ -85,6 +86,10 @@ public static class DependencyInjection
         services.AddScoped<
             IUserAuthenticationService,
             UserAuthenticationService>();
+
+        services.AddScoped<
+            IOrganizationMemberService,
+            OrganizationMemberService>();
 
         services.Configure<FirstOwnerBootstrapOptions>(
             configuration.GetSection(
