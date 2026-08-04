@@ -291,6 +291,53 @@ public sealed class LandService :
             land.ToResponse());
     }
 
+    public async Task<Result<Guid>> DeleteAsync(
+        Guid organizationId,
+        Guid landId,
+        CancellationToken cancellationToken = default)
+    {
+        var identifierError = ValidateIdentifiers(
+            organizationId,
+            landId);
+
+        if (identifierError is not null)
+        {
+            return Result<Guid>.Failure(
+                identifierError);
+        }
+
+        var landResult = await GetForUpdateAsync(
+            organizationId,
+            landId,
+            cancellationToken);
+
+        if (landResult.IsFailure)
+        {
+            return Result<Guid>.Failure(
+                landResult.Error);
+        }
+
+        var cropCycles =
+            await _cropCycleRepository.GetAllAsync(
+                organizationId,
+                landId: landId,
+                cancellationToken: cancellationToken);
+
+        if (cropCycles.Count > 0)
+        {
+            return Result<Guid>.Failure(
+                LandErrors.HistoricalReferenceExists(
+                    landId));
+        }
+
+        _landRepository.Remove(landResult.Value);
+
+        await _unitOfWork.SaveChangesAsync(
+            cancellationToken);
+
+        return Result<Guid>.Success(landId);
+    }
+
     public Task<Result<LandResponse>> ActivateAsync(
         Guid organizationId,
         Guid landId,

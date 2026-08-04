@@ -85,6 +85,36 @@ export type LandPlot = {
   updatedAt: string | null;
 };
 
+export type AreaUnit = 1 | 2;
+
+export type LandTenureType = 1 | 2 | 3 | 4 | 5;
+
+export type CreateLandRequest = {
+  code: string;
+  name: string;
+  tenureType: LandTenureType;
+  totalArea: number;
+  areaUnit: AreaUnit;
+  address: string | null;
+  locationDescription: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+};
+
+export type UpdateLandRequest = Omit<CreateLandRequest, "code">;
+
+export type AddLandPlotRequest = {
+  code: string;
+  name: string;
+  area: number;
+  areaUnit: AreaUnit;
+  generalCondition: string | null;
+  notes: string | null;
+};
+
+export type UpdateLandPlotRequest = Omit<AddLandPlotRequest, "code">;
+
 export type Land = {
   id: string;
   organizationId: string;

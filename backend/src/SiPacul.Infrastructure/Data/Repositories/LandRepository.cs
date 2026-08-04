@@ -92,4 +92,11 @@ public sealed class LandRepository :
 
         _dbContext.Lands.Add(land);
     }
+
+    public void Remove(Land land)
+    {
+        ArgumentNullException.ThrowIfNull(land);
+
+        _dbContext.Lands.Remove(land);
+    }
 }

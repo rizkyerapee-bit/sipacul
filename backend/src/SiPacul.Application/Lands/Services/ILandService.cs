@@ -25,6 +25,11 @@ public interface ILandService
         UpdateLandRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<Result<Guid>> DeleteAsync(
+        Guid organizationId,
+        Guid landId,
+        CancellationToken cancellationToken = default);
+
     Task<Result<LandResponse>> ActivateAsync(
         Guid organizationId,
         Guid landId,

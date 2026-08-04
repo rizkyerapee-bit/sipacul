@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { DashboardOverview } from "@/components/dashboard-overview";
+import { LandManagement } from "@/components/land-management";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
 import { getRoleLabel, hasPermission, resolveSelectedMembership, setSelectedOrganizationId } from "@/lib/session/organization-selection";
@@ -49,17 +50,18 @@ type NavigationItem = {
   caption: string;
   permission: string | null;
   icon: IconName;
+  path: string | null;
 };
 
 const navigation: NavigationItem[] = [
-  { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "dashboard" },
-  { label: "Lahan", caption: "Lahan dan petak", permission: "lands.read", icon: "land" },
-  { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout" },
-  { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest" },
-  { label: "Penjualan", caption: "Transaksi dan piutang", permission: "sales.read", icon: "sales" },
-  { label: "Keuangan", caption: "Biaya, modal, dan laba", permission: "finance.read", icon: "finance" },
-  { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share" },
-  { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team" },
+  { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "dashboard", path: "/dashboard" },
+  { label: "Lahan", caption: "Lahan dan petak", permission: "lands.read", icon: "land", path: "/lands" },
+  { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout", path: null },
+  { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: null },
+  { label: "Penjualan", caption: "Transaksi dan piutang", permission: "sales.read", icon: "sales", path: null },
+  { label: "Keuangan", caption: "Biaya, modal, dan laba", permission: "finance.read", icon: "finance", path: null },
+  { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: null },
+  { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team", path: null },
 ];
 
 const iconPaths: Record<IconName, string> = {
@@ -95,6 +97,7 @@ function AppIcon({ name }: { name: IconName }) {
 
 export function DashboardShell() {
   const router = useRouter();
+  const pathname = usePathname();
   const [state, setState] = useState<DashboardState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -286,25 +289,31 @@ export function DashboardShell() {
 
         <div className={styles.navigationLabel}>Menu utama</div>
         <nav className={styles.navigation}>
-          {visibleNavigation.map((item, index) => {
-            const isActive = index === 0;
+          {visibleNavigation.map((item) => {
+            const isActive = item.path === pathname;
+            const isAvailable = item.path !== null;
 
             return (
               <button
                 key={item.label}
                 className={`${styles.navigationItem} ${isActive ? styles.navigationItemActive : ""}`}
                 type="button"
-                disabled={!isActive}
+                disabled={!isAvailable}
                 aria-current={isActive ? "page" : undefined}
                 title={isSidebarCollapsed ? item.label : undefined}
-                onClick={() => setIsMobileNavigationOpen(false)}
+                onClick={() => {
+                  setIsMobileNavigationOpen(false);
+                  if (item.path && !isActive) {
+                    router.push(item.path);
+                  }
+                }}
               >
                 <span className={styles.navigationIcon}><AppIcon name={item.icon} /></span>
                 <span className={styles.navigationCopy}>
                   <strong>{item.label}</strong>
                   <small>{item.caption}</small>
                 </span>
-                {!isActive && <span className={styles.soonBadge}>Segera</span>}
+                {!isAvailable && <span className={styles.soonBadge}>Segera</span>}
               </button>
             );
           })}
@@ -419,13 +428,22 @@ export function DashboardShell() {
 
         <main className={styles.content}>
           {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
-          <DashboardOverview
-            key={state.membership?.organizationId ?? "no-organization"}
-            firstName={firstName}
-            organization={state.organization}
-            organizationId={state.membership?.organizationId ?? null}
-            permissions={state.membership?.permissions ?? []}
-          />
+          {pathname === "/lands" ? (
+            <LandManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : (
+            <DashboardOverview
+              key={state.membership?.organizationId ?? "no-organization"}
+              firstName={firstName}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          )}
         </main>
       </div>
     </div>

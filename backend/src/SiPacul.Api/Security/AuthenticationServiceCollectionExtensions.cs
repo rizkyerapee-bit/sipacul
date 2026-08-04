@@ -55,6 +55,22 @@ public static class AuthenticationServiceCollectionExtensions
 
                     options.EventsType =
                         typeof(ApplicationCookieEvents);
+                })
+            .AddCookie(
+                IdentityConstants.TwoFactorRememberMeScheme,
+                options =>
+                {
+                    options.Cookie.HttpOnly = true;
+
+                    options.Cookie.SecurePolicy =
+                        CookieSecurePolicy.Always;
+
+                    options.Cookie.SameSite =
+                        SameSiteMode.Lax;
+
+                    options.Cookie.Path = "/";
+
+                    options.Cookie.IsEssential = true;
                 });
 
         services.AddAuthorization();

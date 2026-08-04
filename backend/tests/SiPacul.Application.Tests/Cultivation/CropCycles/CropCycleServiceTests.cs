@@ -1558,6 +1558,11 @@ public sealed class CropCycleServiceTests
         {
             _lands.Add(land);
         }
+
+        public void Remove(Land land)
+        {
+            _lands.Remove(land);
+        }
     }
 
     private sealed class FakeUnitOfWork :

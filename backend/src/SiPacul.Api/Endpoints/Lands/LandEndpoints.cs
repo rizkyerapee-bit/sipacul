@@ -76,6 +76,21 @@ public static class LandEndpoints
             .ProducesProblem(
                 StatusCodes.Status409Conflict);
 
+        group.MapDelete(
+                "/{landId:guid}",
+                DeleteAsync)
+            .WithName("Lands.Delete")
+            .RequireOrganizationPermission(
+                Permissions.LandsWrite)
+            .Produces(
+                StatusCodes.Status204NoContent)
+            .ProducesProblem(
+                StatusCodes.Status400BadRequest)
+            .ProducesProblem(
+                StatusCodes.Status404NotFound)
+            .ProducesProblem(
+                StatusCodes.Status409Conflict);
+
         group.MapPatch(
                 "/{landId:guid}/activate",
                 ActivateAsync)
@@ -242,6 +257,21 @@ public static class LandEndpoints
 
         return result.ToHttpResult(
             land => Results.Ok(land));
+    }
+
+    private static async Task<IResult> DeleteAsync(
+        Guid organizationId,
+        Guid landId,
+        ILandService service,
+        CancellationToken cancellationToken)
+    {
+        var result = await service.DeleteAsync(
+            organizationId,
+            landId,
+            cancellationToken);
+
+        return result.ToHttpResult(
+            _ => Results.NoContent());
     }
 
     private static async Task<IResult> ActivateAsync(

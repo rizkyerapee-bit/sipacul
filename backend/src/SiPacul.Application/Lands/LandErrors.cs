@@ -25,6 +25,9 @@ public static class LandErrors
     public const string AreaCapacityExceededCode =
         "Lands.AreaCapacityExceeded";
 
+    public const string HistoricalReferenceExistsCode =
+        "Lands.HistoricalReferenceExists";
+
     public static Error Validation(
         string message)
     {
@@ -86,5 +89,14 @@ public static class LandErrors
         return Error.Conflict(
             AreaCapacityExceededCode,
             message);
+    }
+
+    public static Error HistoricalReferenceExists(
+        Guid landId)
+    {
+        return Error.Conflict(
+            HistoricalReferenceExistsCode,
+            $"Land '{landId}' cannot be removed because " +
+            "it is referenced by crop-cycle history.");
     }
 }

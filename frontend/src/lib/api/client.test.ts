@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  addLandPlot,
   ApiError,
   bootstrapOwner,
+  createLand,
+  deleteLand,
   getBootstrapStatus,
   getCropCycleProfitability,
   getCropCycles,
@@ -12,6 +15,11 @@ import {
   getOrganization,
   login,
   logout,
+  removeLandPlot,
+  setLandActive,
+  setLandPlotActive,
+  updateLand,
+  updateLandPlot,
 } from "@/lib/api/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -86,6 +94,98 @@ describe("SiPacul API client", () => {
       credentials: "include",
       cache: "no-store",
     }));
+  });
+
+  it("writes land records through CSRF-protected encoded routes", async () => {
+    const landRequest = {
+      code: "LHN-01",
+      name: "Lahan Timur",
+      tenureType: 1 as const,
+      totalArea: 1,
+      areaUnit: 2 as const,
+      address: null,
+      locationDescription: null,
+      latitude: null,
+      longitude: null,
+      notes: null,
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "csrf-1", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "land-1" }, 201))
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "csrf-2", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "land-1" }))
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "csrf-3", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "land-1", isActive: false }));
+
+    await createLand("org 1", landRequest);
+    await updateLand("org 1", "land 1", {
+      name: landRequest.name,
+      tenureType: landRequest.tenureType,
+      totalArea: landRequest.totalArea,
+      areaUnit: landRequest.areaUnit,
+      address: landRequest.address,
+      locationDescription: landRequest.locationDescription,
+      latitude: landRequest.latitude,
+      longitude: landRequest.longitude,
+      notes: landRequest.notes,
+    });
+    await setLandActive("org 1", "land 1", false);
+
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/organizations/org%201/lands");
+    expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe("POST");
+    expect(fetchMock.mock.calls[3][0]).toBe("/api/v1/organizations/org%201/lands/land%201");
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe("PUT");
+    expect(fetchMock.mock.calls[5][0]).toBe("/api/v1/organizations/org%201/lands/land%201/deactivate");
+    expect((fetchMock.mock.calls[5][1] as RequestInit).method).toBe("PATCH");
+    expect(new Headers((fetchMock.mock.calls[1][1] as RequestInit).headers).get("X-CSRF")).toBe("csrf-1");
+  });
+
+  it("writes plot records through CSRF-protected nested routes", async () => {
+    const plotRequest = {
+      code: "PTK-01",
+      name: "Petak Utara",
+      area: 2500,
+      areaUnit: 1 as const,
+      generalCondition: null,
+      notes: null,
+    };
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `csrf-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "land-1", plots: [] }));
+    }
+
+    await addLandPlot("org 1", "land 1", plotRequest);
+    await updateLandPlot("org 1", "land 1", "plot 1", {
+      name: plotRequest.name,
+      area: plotRequest.area,
+      areaUnit: plotRequest.areaUnit,
+      generalCondition: plotRequest.generalCondition,
+      notes: plotRequest.notes,
+    });
+    await setLandPlotActive("org 1", "land 1", "plot 1", false);
+    await removeLandPlot("org 1", "land 1", "plot 1");
+
+    const resource = "/api/v1/organizations/org%201/lands/land%201/plots/plot%201";
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/organizations/org%201/lands/land%201/plots");
+    expect(fetchMock.mock.calls[3][0]).toBe(resource);
+    expect(fetchMock.mock.calls[5][0]).toBe(`${resource}/deactivate`);
+    expect(fetchMock.mock.calls[7][0]).toBe(resource);
+    expect([1, 3, 5, 7].map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "DELETE"]);
+  });
+
+  it("deletes an unused land through a CSRF-protected encoded route", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "csrf-delete", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await expect(deleteLand("org 1", "land 1")).resolves.toBeUndefined();
+
+    expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/organizations/org%201/lands/land%201");
+    expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe("DELETE");
+    expect(new Headers((fetchMock.mock.calls[1][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("csrf-delete");
   });
 
   it("obtains a CSRF token before login", async () => {

@@ -363,6 +363,61 @@ public sealed class LandEndpointTests
     }
 
     [Fact]
+    public async Task Delete_WhenSuccessful_ShouldReturnNoContent()
+    {
+        using var factory = new LandApiFactory();
+
+        var organizationId = Guid.NewGuid();
+        var landId = Guid.NewGuid();
+
+        factory.Service.DeleteResult =
+            Result<Guid>.Success(landId);
+
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.DeleteAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            $"lands/{landId}");
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            response.StatusCode);
+        Assert.Empty(
+            await response.Content.ReadAsByteArrayAsync());
+    }
+
+    [Fact]
+    public async Task Delete_WhenHistoryExists_ShouldReturnConflict()
+    {
+        using var factory = new LandApiFactory();
+
+        var organizationId = Guid.NewGuid();
+        var landId = Guid.NewGuid();
+
+        factory.Service.DeleteResult =
+            Result<Guid>.Failure(
+                LandErrors.HistoricalReferenceExists(
+                    landId));
+
+        using var client = factory.CreateHttpsClient();
+
+        var response = await client.DeleteAsync(
+            $"/api/v1/organizations/{organizationId}/" +
+            $"lands/{landId}");
+
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
+
+        var body =
+            await response.Content.ReadAsStringAsync();
+
+        Assert.Contains(
+            LandErrors.HistoricalReferenceExistsCode,
+            body);
+    }
+
+    [Fact]
     public async Task AddPlot_WhenSuccessful_ShouldReturnUpdatedLand()
     {
         using var factory = new LandApiFactory();
@@ -861,6 +916,12 @@ public sealed class LandEndpointTests
             set;
         } = SuccessResponse(isActive: false);
 
+        public Result<Guid> DeleteResult
+        {
+            get;
+            set;
+        } = Result<Guid>.Success(Guid.NewGuid());
+
         public Result<LandResponse> AddPlotResult
         {
             get;
@@ -942,6 +1003,14 @@ public sealed class LandEndpointTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(DeactivateResult);
+        }
+
+        public Task<Result<Guid>> DeleteAsync(
+            Guid organizationId,
+            Guid landId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(DeleteResult);
         }
 
         public Task<Result<LandResponse>> AddPlotAsync(

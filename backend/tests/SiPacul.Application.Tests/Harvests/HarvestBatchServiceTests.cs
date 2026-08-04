@@ -1232,6 +1232,11 @@ public sealed class HarvestBatchServiceTests
             _lands.Add(land);
         }
 
+        public void Remove(Land land)
+        {
+            _lands.Remove(land);
+        }
+
         private Land? Find(
             Guid organizationId,
             Guid landId)

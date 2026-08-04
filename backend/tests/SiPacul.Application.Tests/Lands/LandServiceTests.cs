@@ -414,6 +414,103 @@ public sealed class LandServiceTests
     }
 
     [Fact]
+    public async Task Delete_WhenUnused_ShouldRemoveLandAndSave()
+    {
+        var organization = CreateOrganization();
+        var land = CreateLand(organization.Id);
+
+        land.AddPlot(
+            "PTK-01",
+            "Petak Satu",
+            2_000,
+            AreaUnit.SquareMeter,
+            null,
+            null);
+
+        var repository = new FakeLandRepository(land);
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                repository,
+                new FakeOrganizationRepository(
+                    organization),
+                unitOfWork)
+            .DeleteAsync(
+                organization.Id,
+                land.Id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(land.Id, result.Value);
+        Assert.Empty(repository.Lands);
+        Assert.Equal(1, unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Delete_WhenMissing_ShouldReturnNotFound()
+    {
+        var organization = CreateOrganization();
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                new FakeLandRepository(),
+                new FakeOrganizationRepository(
+                    organization),
+                unitOfWork)
+            .DeleteAsync(
+                organization.Id,
+                Guid.NewGuid());
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            LandErrors.NotFoundCode,
+            result.Error.Code);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Delete_WithHistoricalCropCycle_ShouldReturnConflict()
+    {
+        var organization = CreateOrganization();
+        var land = CreateLand(organization.Id);
+
+        var plot = land.AddPlot(
+            "PTK-01",
+            "Petak Satu",
+            5_000,
+            AreaUnit.SquareMeter,
+            null,
+            null);
+
+        var cropCycle = CreateCropCycle(
+            organization.Id,
+            land.Id,
+            plot.Id);
+
+        cropCycle.Cancel("Rencana dibatalkan");
+
+        var repository = new FakeLandRepository(land);
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                repository,
+                new FakeOrganizationRepository(
+                    organization),
+                unitOfWork,
+                new FakeCropCycleRepository(
+                    cropCycle))
+            .DeleteAsync(
+                organization.Id,
+                land.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            LandErrors.HistoricalReferenceExistsCode,
+            result.Error.Code);
+        Assert.Single(repository.Lands);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
+    [Fact]
     public async Task Activate_WhenInactive_ShouldActivateAndSave()
     {
         var organization = CreateOrganization();
@@ -1174,6 +1271,11 @@ public sealed class LandServiceTests
         public void Add(Land land)
         {
             _lands.Add(land);
+        }
+
+        public void Remove(Land land)
+        {
+            _lands.Remove(land);
         }
 
         private Land? FindLand(

@@ -24,4 +24,6 @@ public interface ILandRepository
         CancellationToken cancellationToken = default);
 
     void Add(Land land);
+
+    void Remove(Land land);
 }

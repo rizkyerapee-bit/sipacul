@@ -1307,6 +1307,11 @@ public sealed class CultivationActivityServiceTests
         {
             _lands.Add(land);
         }
+
+        public void Remove(Land land)
+        {
+            _lands.Remove(land);
+        }
     }
 
     private sealed class FakeUnitOfWork :

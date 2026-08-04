@@ -104,6 +104,52 @@ public sealed class AuthenticationEndpointTests
     }
 
     [Fact]
+    public async Task SecurityStampCleanupCookie_ShouldBeRegistered()
+    {
+        using var factory =
+            new AuthenticationApiFactory(
+                new StubAuthenticationService());
+
+        var schemeProvider =
+            factory.Services
+                .GetRequiredService<
+                    IAuthenticationSchemeProvider>();
+
+        var scheme =
+            await schemeProvider.GetSchemeAsync(
+                IdentityConstants
+                    .TwoFactorRememberMeScheme);
+
+        Assert.NotNull(scheme);
+
+        Assert.Equal(
+            typeof(CookieAuthenticationHandler),
+            scheme!.HandlerType);
+
+        var options =
+            factory.Services
+                .GetRequiredService<
+                    IOptionsMonitor<
+                        CookieAuthenticationOptions>>()
+                .Get(
+                    IdentityConstants
+                        .TwoFactorRememberMeScheme);
+
+        Assert.True(options.Cookie.HttpOnly);
+
+        Assert.Equal(
+            CookieSecurePolicy.Always,
+            options.Cookie.SecurePolicy);
+
+        Assert.Equal(
+            SameSiteMode.Lax,
+            options.Cookie.SameSite);
+
+        Assert.Equal("/", options.Cookie.Path);
+        Assert.True(options.Cookie.IsEssential);
+    }
+
+    [Fact]
     public void IdentityPasswordPolicy_ShouldMeetBaseline()
     {
         using var factory =

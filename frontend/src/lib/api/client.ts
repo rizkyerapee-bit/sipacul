@@ -4,14 +4,18 @@ import type {
   BootstrapOwnerRequest,
   BootstrapOwnerResponse,
   BootstrapStatus,
+  AddLandPlotRequest,
   CropCycle,
   CropCycleProfitability,
+  CreateLandRequest,
   CultivationActivity,
   CurrentUser,
   HarvestBatch,
   Land,
   LoginRequest,
   Organization,
+  UpdateLandPlotRequest,
+  UpdateLandRequest,
 } from "@/lib/api/contracts";
 
 const API_PREFIX = "/api/v1";
@@ -146,6 +150,115 @@ export function getLands(
 ): Promise<Land[]> {
   return apiRequest<Land[]>(
     getOrganizationResourcePath(organizationId, "/lands"),
+  );
+}
+
+export function createLand(
+  organizationId: string,
+  request: CreateLandRequest,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(organizationId, "/lands"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateLand(
+  organizationId: string,
+  landId: string,
+  request: UpdateLandRequest,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function deleteLand(
+  organizationId: string,
+  landId: string,
+): Promise<void> {
+  return csrfRequest<void>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}`,
+    ),
+    { method: "DELETE" },
+  );
+}
+
+export function setLandActive(
+  organizationId: string,
+  landId: string,
+  isActive: boolean,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}/${isActive ? "activate" : "deactivate"}`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function addLandPlot(
+  organizationId: string,
+  landId: string,
+  request: AddLandPlotRequest,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}/plots`,
+    ),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateLandPlot(
+  organizationId: string,
+  landId: string,
+  plotId: string,
+  request: UpdateLandPlotRequest,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}/plots/${encodeURIComponent(plotId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function removeLandPlot(
+  organizationId: string,
+  landId: string,
+  plotId: string,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}/plots/${encodeURIComponent(plotId)}`,
+    ),
+    { method: "DELETE" },
+  );
+}
+
+export function setLandPlotActive(
+  organizationId: string,
+  landId: string,
+  plotId: string,
+  isActive: boolean,
+): Promise<Land> {
+  return csrfRequest<Land>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}/plots/${encodeURIComponent(plotId)}/${isActive ? "activate" : "deactivate"}`,
+    ),
+    { method: "PATCH" },
   );
 }
 
