@@ -3,11 +3,16 @@ import {
   addLandPlot,
   ApiError,
   bootstrapOwner,
+  cancelCropCycle,
+  completeCropCycle,
+  createCropCycle,
   createLand,
   deleteLand,
   getBootstrapStatus,
+  getCommodities,
   getCropCycleProfitability,
   getCropCycles,
+  getCultivationSops,
   getCultivationActivities,
   getCurrentUser,
   getHarvestBatches,
@@ -18,6 +23,9 @@ import {
   removeLandPlot,
   setLandActive,
   setLandPlotActive,
+  startCropCycle,
+  updateCropCycleNotes,
+  updateCropCyclePlan,
   updateLand,
   updateLandPlot,
 } from "@/lib/api/client";
@@ -60,13 +68,69 @@ describe("SiPacul API client", () => {
   it("reads organization dashboard collections with encoded identifiers", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse([]));
 
     await getLands("org 1");
     await getCropCycles("org 1");
+    await getCommodities("org 1");
+    await getCultivationSops("org 1");
 
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/organizations/org%201/lands");
     expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/organizations/org%201/crop-cycles");
+    expect(fetchMock.mock.calls[2][0]).toBe("/api/v1/organizations/org%201/commodities");
+    expect(fetchMock.mock.calls[3][0]).toBe("/api/v1/organizations/org%201/cultivation-sops");
+  });
+
+  it("writes every crop-cycle transition through CSRF-protected encoded routes", async () => {
+    const createRequest = {
+      code: "SB-01",
+      name: "Cabai Musim Kemarau",
+      commodityId: "commodity 1",
+      cultivationSopId: "sop 1",
+      landId: "land 1",
+      landPlotId: "plot 1",
+      plantedArea: 0.25,
+      areaUnit: 2 as const,
+      plannedStartDate: "2026-08-10",
+      expectedHarvestDate: "2026-11-10",
+      notes: null,
+    };
+    for (let index = 0; index < 6; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `csrf-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "cycle-1", ...createRequest }, index === 0 ? 201 : 200));
+    }
+
+    await createCropCycle("org 1", createRequest);
+    await updateCropCyclePlan("org 1", "cycle 1", {
+      name: createRequest.name,
+      cultivationSopId: createRequest.cultivationSopId,
+      plantedArea: createRequest.plantedArea,
+      areaUnit: createRequest.areaUnit,
+      plannedStartDate: createRequest.plannedStartDate,
+      expectedHarvestDate: createRequest.expectedHarvestDate,
+      notes: createRequest.notes,
+    });
+    await startCropCycle("org 1", "cycle 1", { actualStartDate: "2026-08-11" });
+    await completeCropCycle("org 1", "cycle 1", { actualHarvestDate: "2026-11-08" });
+    await cancelCropCycle("org 1", "cycle 1", { cancellationReason: "Cuaca ekstrem" });
+    await updateCropCycleNotes("org 1", "cycle 1", { notes: "Pengamatan awal" });
+
+    const cyclePath = "/api/v1/organizations/org%201/crop-cycles/cycle%201";
+    expect([1, 3, 5, 7, 9, 11].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      "/api/v1/organizations/org%201/crop-cycles",
+      cyclePath,
+      `${cyclePath}/start`,
+      `${cyclePath}/complete`,
+      `${cyclePath}/cancel`,
+      `${cyclePath}/notes`,
+    ]);
+    expect([1, 3, 5, 7, 9, 11].map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH", "PATCH", "PATCH"]);
+    expect(new Headers((fetchMock.mock.calls[11][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("csrf-5");
   });
 
   it("reads selected-cycle dashboard sources with encoded identifiers", async () => {

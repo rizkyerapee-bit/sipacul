@@ -136,6 +136,45 @@ export type Land = {
   plots: LandPlot[];
 };
 
+export type Commodity = {
+  id: string;
+  organizationId: string;
+  code: string;
+  name: string;
+  commodityCategoryId: string;
+  scientificName: string | null;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CultivationSopStep = {
+  id: string;
+  organizationId: string;
+  cultivationSopId: string;
+  sequence: number;
+  name: string;
+  description: string | null;
+  plannedDayOffset: number;
+  estimatedDurationDays: number;
+  isRequired: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CultivationSop = {
+  id: string;
+  organizationId: string;
+  commodityId: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+  steps: CultivationSopStep[];
+};
+
 export type CropCycleStatus = 1 | 2 | 3 | 4;
 
 export type CropCycle = {
@@ -159,6 +198,41 @@ export type CropCycle = {
   notes: string | null;
   createdAt: string;
   updatedAt: string | null;
+};
+
+export type CreateCropCycleRequest = {
+  code: string;
+  name: string;
+  commodityId: string;
+  cultivationSopId: string | null;
+  landId: string;
+  landPlotId: string;
+  plantedArea: number;
+  areaUnit: AreaUnit;
+  plannedStartDate: string;
+  expectedHarvestDate: string;
+  notes: string | null;
+};
+
+export type UpdateCropCyclePlanRequest = Omit<
+  CreateCropCycleRequest,
+  "code" | "commodityId" | "landId" | "landPlotId"
+>;
+
+export type StartCropCycleRequest = {
+  actualStartDate: string;
+};
+
+export type CompleteCropCycleRequest = {
+  actualHarvestDate: string;
+};
+
+export type CancelCropCycleRequest = {
+  cancellationReason: string;
+};
+
+export type UpdateCropCycleNotesRequest = {
+  notes: string | null;
 };
 
 export type CultivationActivityStatus = 1 | 2 | 3 | 4;

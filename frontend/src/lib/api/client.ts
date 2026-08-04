@@ -5,15 +5,23 @@ import type {
   BootstrapOwnerResponse,
   BootstrapStatus,
   AddLandPlotRequest,
+  CancelCropCycleRequest,
+  Commodity,
+  CompleteCropCycleRequest,
   CropCycle,
   CropCycleProfitability,
+  CreateCropCycleRequest,
   CreateLandRequest,
+  CultivationSop,
   CultivationActivity,
   CurrentUser,
   HarvestBatch,
   Land,
   LoginRequest,
   Organization,
+  StartCropCycleRequest,
+  UpdateCropCyclePlanRequest,
+  UpdateCropCycleNotesRequest,
   UpdateLandPlotRequest,
   UpdateLandRequest,
 } from "@/lib/api/contracts";
@@ -267,6 +275,102 @@ export function getCropCycles(
 ): Promise<CropCycle[]> {
   return apiRequest<CropCycle[]>(
     getOrganizationResourcePath(organizationId, "/crop-cycles"),
+  );
+}
+
+export function getCommodities(
+  organizationId: string,
+): Promise<Commodity[]> {
+  return apiRequest<Commodity[]>(
+    getOrganizationResourcePath(organizationId, "/commodities"),
+  );
+}
+
+export function getCultivationSops(
+  organizationId: string,
+): Promise<CultivationSop[]> {
+  return apiRequest<CultivationSop[]>(
+    getOrganizationResourcePath(organizationId, "/cultivation-sops"),
+  );
+}
+
+export function createCropCycle(
+  organizationId: string,
+  request: CreateCropCycleRequest,
+): Promise<CropCycle> {
+  return csrfRequest<CropCycle>(
+    getOrganizationResourcePath(organizationId, "/crop-cycles"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCropCyclePlan(
+  organizationId: string,
+  cropCycleId: string,
+  request: UpdateCropCyclePlanRequest,
+): Promise<CropCycle> {
+  return csrfRequest<CropCycle>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function startCropCycle(
+  organizationId: string,
+  cropCycleId: string,
+  request: StartCropCycleRequest,
+): Promise<CropCycle> {
+  return csrfRequest<CropCycle>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/start`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function completeCropCycle(
+  organizationId: string,
+  cropCycleId: string,
+  request: CompleteCropCycleRequest,
+): Promise<CropCycle> {
+  return csrfRequest<CropCycle>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/complete`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function cancelCropCycle(
+  organizationId: string,
+  cropCycleId: string,
+  request: CancelCropCycleRequest,
+): Promise<CropCycle> {
+  return csrfRequest<CropCycle>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/cancel`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCropCycleNotes(
+  organizationId: string,
+  cropCycleId: string,
+  request: UpdateCropCycleNotesRequest,
+): Promise<CropCycle> {
+  return csrfRequest<CropCycle>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/notes`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
   );
 }
 
