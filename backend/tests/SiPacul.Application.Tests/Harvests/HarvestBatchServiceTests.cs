@@ -161,6 +161,61 @@ public sealed class HarvestBatchServiceTests
     }
 
     [Fact]
+    public async Task Create_WhenActiveUnitDiffers_ShouldFail()
+    {
+        var context = CreateContext(startCycle: true);
+        var existing = CreateBatch(context);
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                context,
+                new FakeHarvestBatchRepository(existing),
+                unitOfWork)
+            .CreateAsync(
+                context.Organization.Id,
+                context.CropCycle.Id,
+                CreateRequest() with
+                {
+                    Code = "HRV-002",
+                    QuantityUnit =
+                        HarvestQuantityUnit.Quintal
+                });
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            HarvestBatchErrors.QuantityUnitConflictCode,
+            result.Error.Code);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
+    [Fact]
+    public async Task Create_WhenDifferentUnitIsCancelled_ShouldSucceed()
+    {
+        var context = CreateContext(startCycle: true);
+        var cancelled = CreateBatch(context);
+        cancelled.Cancel("Satuan lama tidak dipakai");
+
+        var result = await CreateService(
+                context,
+                new FakeHarvestBatchRepository(cancelled),
+                new FakeUnitOfWork())
+            .CreateAsync(
+                context.Organization.Id,
+                context.CropCycle.Id,
+                CreateRequest() with
+                {
+                    Code = "HRV-002",
+                    QuantityUnit =
+                        HarvestQuantityUnit.Quintal
+                });
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(
+            HarvestQuantityUnit.Quintal,
+            result.Value.QuantityUnit);
+    }
+
+    [Fact]
     public async Task GetAll_WithFilter_ShouldReturnMatchingBatch()
     {
         var context = CreateContext(startCycle: true);
@@ -308,6 +363,41 @@ public sealed class HarvestBatchServiceTests
     }
 
     [Fact]
+    public async Task UpdateDraft_WhenSiblingUnitDiffers_ShouldFail()
+    {
+        var context = CreateContext(startCycle: true);
+        var first = CreateBatch(context);
+        var sibling = CreateBatch(context, "HRV-002");
+        var unitOfWork = new FakeUnitOfWork();
+
+        var result = await CreateService(
+                context,
+                new FakeHarvestBatchRepository(first, sibling),
+                unitOfWork)
+            .UpdateDraftAsync(
+                context.Organization.Id,
+                context.CropCycle.Id,
+                first.Id,
+                new UpdateHarvestBatchRequest(
+                    HarvestDate,
+                    1000,
+                    25,
+                    HarvestQuantityUnit.Quintal,
+                    null,
+                    null,
+                    null));
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            HarvestBatchErrors.QuantityUnitConflictCode,
+            result.Error.Code);
+        Assert.Equal(
+            HarvestQuantityUnit.Kilogram,
+            first.QuantityUnit);
+        Assert.Equal(0, unitOfWork.SaveCount);
+    }
+
+    [Fact]
     public async Task Confirm_WhenValid_ShouldConfirmAndExposeStock()
     {
         var context = CreateContext(startCycle: true);
@@ -357,6 +447,34 @@ public sealed class HarvestBatchServiceTests
             HarvestBatchErrors
                 .CropCycleNotInProgressCode,
             result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Confirm_WhenActiveUnitDiffers_ShouldFail()
+    {
+        var context = CreateContext(startCycle: true);
+        var batch = CreateBatch(context);
+        var sibling = CreateBatch(
+            context,
+            "HRV-002",
+            unit: HarvestQuantityUnit.Quintal);
+
+        var result = await CreateService(
+                context,
+                new FakeHarvestBatchRepository(batch, sibling),
+                new FakeUnitOfWork())
+            .ConfirmAsync(
+                context.Organization.Id,
+                context.CropCycle.Id,
+                batch.Id);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            HarvestBatchErrors.QuantityUnitConflictCode,
+            result.Error.Code);
+        Assert.Equal(
+            HarvestBatchStatus.Draft,
+            batch.Status);
     }
 
     [Fact]
@@ -814,6 +932,28 @@ public sealed class HarvestBatchServiceTests
                         cropCycleId &&
                     batch.Status !=
                         HarvestBatchStatus.Cancelled &&
+                    !batch.IsDeleted));
+        }
+
+        public Task<bool>
+            HasNonCancelledBatchWithDifferentUnitAsync(
+                Guid organizationId,
+                Guid cropCycleId,
+                HarvestQuantityUnit quantityUnit,
+                Guid? excludedHarvestBatchId = null,
+                CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                _batches.Any(batch =>
+                    batch.OrganizationId ==
+                        organizationId &&
+                    batch.CropCycleId == cropCycleId &&
+                    batch.Status !=
+                        HarvestBatchStatus.Cancelled &&
+                    batch.QuantityUnit != quantityUnit &&
+                    (!excludedHarvestBatchId.HasValue ||
+                        batch.Id !=
+                            excludedHarvestBatchId.Value) &&
                     !batch.IsDeleted));
         }
 

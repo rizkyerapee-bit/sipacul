@@ -65,6 +65,7 @@ type IconName =
   | "edit"
   | "field"
   | "flag"
+  | "harvest"
   | "notes"
   | "refresh"
   | "search"
@@ -79,6 +80,7 @@ const iconPaths: Record<IconName, string> = {
   edit: "m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Zm10-12 3 3",
   field: "M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20V6.5Zm6-2.5v13.5M15 6.5V20",
   flag: "M5 21V4m0 1h11l-2 4 2 4H5",
+  harvest: "M5 20h14M7 20V9m4 11V5m4 15V8m4 12V4M5 9c2 0 4 1 6 3m0-7c2 0 3 1 4 3m0 0c2-1 3-2 4-4",
   notes: "M5 4h14v16H5V4Zm4 4h6m-6 4h6m-6 4h4",
   refresh: "M20 6v5h-5M4 18v-5h5m10-2a7 7 0 0 0-12-4L4 11m16 2-3 4a7 7 0 0 1-12-4",
   search: "m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
@@ -769,9 +771,14 @@ export function CropCycleManagement({
         <div className={styles.heroActions}>
           {!canWrite && <span className={styles.readOnlyBadge}>Mode baca</span>}
           {cropCycles.length > 0 && (
-            <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}>
-              <Icon name="notes" /> Aktivitas lapangan
-            </button>
+            <>
+              <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}>
+                <Icon name="notes" /> Aktivitas lapangan
+              </button>
+              <button className={styles.secondaryButton} type="button" onClick={() => router.push("/harvest")}>
+                <Icon name="harvest" /> Panen
+              </button>
+            </>
           )}
           <button className={styles.refreshButton} type="button" disabled={isRefreshing || isLoading} onClick={() => void loadData(true)}>
             <Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}
@@ -891,6 +898,7 @@ export function CropCycleManagement({
                 <div className={styles.detailActions}>
                   <span className={`${styles.statusBadge} ${styles[`status${selectedCycle.status}`]}`}>{cropCycleStatusLabels[selectedCycle.status]}</span>
                   <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}><Icon name="notes" /> Aktivitas</button>
+                  <button className={styles.secondaryButton} type="button" onClick={() => router.push("/harvest")}><Icon name="harvest" /> Panen</button>
                   {canWrite && selectedCycle.status === 1 && (
                     <>
                       <button className={styles.secondaryButton} type="button" onClick={() => openEditor({ mode: "edit", cropCycleId: selectedCycle.id })}><Icon name="edit" /> Ubah</button>

@@ -42,5 +42,12 @@ public interface IHarvestBatchRepository
         Guid cropCycleId,
         CancellationToken cancellationToken = default);
 
+    Task<bool> HasNonCancelledBatchWithDifferentUnitAsync(
+        Guid organizationId,
+        Guid cropCycleId,
+        HarvestQuantityUnit quantityUnit,
+        Guid? excludedHarvestBatchId = null,
+        CancellationToken cancellationToken = default);
+
     void Add(HarvestBatch harvestBatch);
 }

@@ -25,6 +25,9 @@ public static class HarvestBatchErrors
     public const string InvalidHarvestDateCode =
         "HarvestBatches.InvalidHarvestDate";
 
+    public const string QuantityUnitConflictCode =
+        "HarvestBatches.QuantityUnitConflict";
+
     public const string InvalidStatusTransitionCode =
         "HarvestBatches.InvalidStatusTransition";
 
@@ -98,6 +101,15 @@ public static class HarvestBatchErrors
             $"Harvest date '{harvestDate:yyyy-MM-dd}' cannot " +
             $"be before crop cycle start date " +
             $"'{actualStartDate:yyyy-MM-dd}'.");
+    }
+
+    public static Error QuantityUnitConflict()
+    {
+        return Error.Conflict(
+            QuantityUnitConflictCode,
+            "All active harvest batches in one crop cycle " +
+            "must use the same quantity unit. Cancel the " +
+            "conflicting batch or use the cycle's existing unit.");
     }
 
     public static Error InvalidStatusTransition(

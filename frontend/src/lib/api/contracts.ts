@@ -343,6 +343,8 @@ export type UpdateCultivationActivityResourceRequest = Omit<
 
 export type HarvestQuantityUnit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
+export type HarvestBatchStatus = 1 | 2 | 3;
+
 export type HarvestBatch = {
   id: string;
   organizationId: string;
@@ -356,13 +358,41 @@ export type HarvestBatch = {
   qualityGrade: string | null;
   storageLocation: string | null;
   notes: string | null;
-  status: 1 | 2 | 3;
+  status: HarvestBatchStatus;
   confirmedAt: string | null;
   cancellationReason: string | null;
   confirmedSoldQuantity: number;
   availableQuantity: number;
   createdAt: string;
   updatedAt: string | null;
+};
+
+export type CreateHarvestBatchRequest = {
+  code: string;
+  harvestDate: string;
+  grossQuantity: number;
+  rejectedQuantity: number;
+  quantityUnit: HarvestQuantityUnit;
+  qualityGrade: string | null;
+  storageLocation: string | null;
+  notes: string | null;
+};
+
+export type UpdateHarvestBatchRequest = Omit<
+  CreateHarvestBatchRequest,
+  "code"
+>;
+
+export type CancelHarvestBatchRequest = {
+  cancellationReason: string;
+};
+
+export type HarvestBatchFilter = {
+  status?: HarvestBatchStatus;
+  harvestDateFrom?: string;
+  harvestDateTo?: string;
+  quantityUnit?: HarvestQuantityUnit;
+  qualityGrade?: string;
 };
 
 export type CropCycleProfitability = {

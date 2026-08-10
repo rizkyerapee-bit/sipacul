@@ -136,6 +136,20 @@ public sealed class HarvestBatchService :
                     harvestBatch.Code));
         }
 
+        var quantityUnitError =
+            await ValidateQuantityUnitConsistencyAsync(
+                organizationId,
+                cropCycleId,
+                harvestBatch.QuantityUnit,
+                null,
+                cancellationToken);
+
+        if (quantityUnitError is not null)
+        {
+            return Result<HarvestBatchResponse>.Failure(
+                quantityUnitError);
+        }
+
         _harvestBatchRepository.Add(harvestBatch);
 
         await _unitOfWork.SaveChangesAsync(
@@ -336,6 +350,20 @@ public sealed class HarvestBatchService :
                 dateError);
         }
 
+        var quantityUnitError =
+            await ValidateQuantityUnitConsistencyAsync(
+                organizationId,
+                cropCycleId,
+                request.QuantityUnit,
+                harvestBatchId,
+                cancellationToken);
+
+        if (quantityUnitError is not null)
+        {
+            return Result<HarvestBatchResponse>.Failure(
+                quantityUnitError);
+        }
+
         try
         {
             context.HarvestBatch.UpdateDraft(
@@ -422,6 +450,20 @@ public sealed class HarvestBatchService :
         {
             return Result<HarvestBatchResponse>.Failure(
                 dateError);
+        }
+
+        var quantityUnitError =
+            await ValidateQuantityUnitConsistencyAsync(
+                organizationId,
+                cropCycleId,
+                context.HarvestBatch.QuantityUnit,
+                harvestBatchId,
+                cancellationToken);
+
+        if (quantityUnitError is not null)
+        {
+            return Result<HarvestBatchResponse>.Failure(
+                quantityUnitError);
         }
 
         try
@@ -572,6 +614,34 @@ public sealed class HarvestBatchService :
             out var soldQuantity)
                 ? soldQuantity
                 : 0;
+    }
+
+    private async Task<Error?>
+        ValidateQuantityUnitConsistencyAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            HarvestQuantityUnit quantityUnit,
+            Guid? excludedHarvestBatchId,
+            CancellationToken cancellationToken)
+    {
+        if (!Enum.IsDefined(quantityUnit))
+        {
+            return HarvestBatchErrors.Validation(
+                "Harvest quantity unit is not supported.");
+        }
+
+        var hasConflict =
+            await _harvestBatchRepository
+                .HasNonCancelledBatchWithDifferentUnitAsync(
+                    organizationId,
+                    cropCycleId,
+                    quantityUnit,
+                    excludedHarvestBatchId,
+                    cancellationToken);
+
+        return hasConflict
+            ? HarvestBatchErrors.QuantityUnitConflict()
+            : null;
     }
 
     private async Task<Result<CropCycle>>

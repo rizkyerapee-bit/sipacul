@@ -8,6 +8,7 @@ import type {
   AddLandPlotRequest,
   CancelCropCycleRequest,
   CancelCultivationActivityRequest,
+  CancelHarvestBatchRequest,
   Commodity,
   CompleteCropCycleRequest,
   CompleteCultivationActivityRequest,
@@ -16,10 +17,12 @@ import type {
   CreateCropCycleRequest,
   CreateCultivationActivityRequest,
   CreateLandRequest,
+  CreateHarvestBatchRequest,
   CultivationSop,
   CultivationActivity,
   CurrentUser,
   HarvestBatch,
+  HarvestBatchFilter,
   Land,
   LoginRequest,
   Organization,
@@ -32,6 +35,7 @@ import type {
   UpdateCropCycleNotesRequest,
   UpdateLandPlotRequest,
   UpdateLandRequest,
+  UpdateHarvestBatchRequest,
 } from "@/lib/api/contracts";
 
 const API_PREFIX = "/api/v1";
@@ -548,12 +552,90 @@ export function removeCultivationActivityResource(
 export function getHarvestBatches(
   organizationId: string,
   cropCycleId: string,
+  filter: HarvestBatchFilter = {},
 ): Promise<HarvestBatch[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.harvestDateFrom) search.set("harvestDateFrom", filter.harvestDateFrom);
+  if (filter.harvestDateTo) search.set("harvestDateTo", filter.harvestDateTo);
+  if (filter.quantityUnit !== undefined) search.set("quantityUnit", String(filter.quantityUnit));
+  if (filter.qualityGrade?.trim()) search.set("qualityGrade", filter.qualityGrade.trim());
+  const query = search.size > 0 ? `?${search.toString()}` : "";
+
   return apiRequest<HarvestBatch[]>(
     getOrganizationResourcePath(
       organizationId,
-      `/crop-cycles/${encodeURIComponent(cropCycleId)}/harvest-batches`,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/harvest-batches${query}`,
     ),
+  );
+}
+
+function getHarvestBatchPath(
+  organizationId: string,
+  cropCycleId: string,
+  resourcePath = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/harvest-batches${resourcePath}`,
+  );
+}
+
+export function createHarvestBatch(
+  organizationId: string,
+  cropCycleId: string,
+  request: CreateHarvestBatchRequest,
+): Promise<HarvestBatch> {
+  return csrfRequest<HarvestBatch>(
+    getHarvestBatchPath(organizationId, cropCycleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateHarvestBatch(
+  organizationId: string,
+  cropCycleId: string,
+  harvestBatchId: string,
+  request: UpdateHarvestBatchRequest,
+): Promise<HarvestBatch> {
+  return csrfRequest<HarvestBatch>(
+    getHarvestBatchPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(harvestBatchId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function confirmHarvestBatch(
+  organizationId: string,
+  cropCycleId: string,
+  harvestBatchId: string,
+): Promise<HarvestBatch> {
+  return csrfRequest<HarvestBatch>(
+    getHarvestBatchPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(harvestBatchId)}/confirm`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function cancelHarvestBatch(
+  organizationId: string,
+  cropCycleId: string,
+  harvestBatchId: string,
+  request: CancelHarvestBatchRequest,
+): Promise<HarvestBatch> {
+  return csrfRequest<HarvestBatch>(
+    getHarvestBatchPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(harvestBatchId)}/cancel`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
   );
 }
 

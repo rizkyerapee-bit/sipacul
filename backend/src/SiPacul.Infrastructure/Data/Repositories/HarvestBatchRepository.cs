@@ -172,6 +172,32 @@ public sealed class HarvestBatchRepository :
                 cancellationToken);
     }
 
+    public Task<bool>
+        HasNonCancelledBatchWithDifferentUnitAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            HarvestQuantityUnit quantityUnit,
+            Guid? excludedHarvestBatchId = null,
+            CancellationToken cancellationToken = default)
+    {
+        return _dbContext.HarvestBatches
+            .AsNoTracking()
+            .AnyAsync(
+                batch =>
+                    batch.OrganizationId ==
+                        organizationId &&
+                    batch.CropCycleId ==
+                        cropCycleId &&
+                    batch.Status !=
+                        HarvestBatchStatus.Cancelled &&
+                    batch.QuantityUnit != quantityUnit &&
+                    (!excludedHarvestBatchId.HasValue ||
+                        batch.Id !=
+                            excludedHarvestBatchId.Value) &&
+                    !batch.IsDeleted,
+                cancellationToken);
+    }
+
     public void Add(HarvestBatch harvestBatch)
     {
         ArgumentNullException.ThrowIfNull(

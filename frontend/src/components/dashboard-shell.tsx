@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { CropCycleManagement } from "@/components/crop-cycle-management";
 import { CultivationActivityManagement } from "@/components/cultivation-activity-management";
+import { HarvestManagement } from "@/components/harvest-management";
 import { LandManagement } from "@/components/land-management";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
@@ -59,7 +60,7 @@ const navigation: NavigationItem[] = [
   { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "dashboard", path: "/dashboard" },
   { label: "Lahan", caption: "Lahan dan petak", permission: "lands.read", icon: "land", path: "/lands" },
   { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout", path: "/cultivation" },
-  { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: null },
+  { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: "/harvest" },
   { label: "Penjualan", caption: "Transaksi dan piutang", permission: "sales.read", icon: "sales", path: null },
   { label: "Keuangan", caption: "Biaya, modal, dan laba", permission: "finance.read", icon: "finance", path: null },
   { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: null },
@@ -434,6 +435,13 @@ export function DashboardShell() {
           {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
           {pathname === "/lands" ? (
             <LandManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/harvest" ? (
+            <HarvestManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}
               organizationId={state.membership?.organizationId ?? null}

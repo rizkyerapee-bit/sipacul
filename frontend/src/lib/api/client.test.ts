@@ -4,13 +4,16 @@ import {
   addLandPlot,
   ApiError,
   bootstrapOwner,
+  cancelHarvestBatch,
   cancelCropCycle,
   cancelCultivationActivity,
   completeCropCycle,
   completeCultivationActivity,
+  confirmHarvestBatch,
   createCropCycle,
   createCultivationActivity,
   createLand,
+  createHarvestBatch,
   deleteLand,
   getBootstrapStatus,
   getCommodities,
@@ -37,6 +40,7 @@ import {
   updateCropCyclePlan,
   updateLand,
   updateLandPlot,
+  updateHarvestBatch,
 } from "@/lib/api/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -156,6 +160,64 @@ describe("SiPacul API client", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(`${basePath}/activities`);
     expect(fetchMock.mock.calls[1][0]).toBe(`${basePath}/harvest-batches`);
     expect(fetchMock.mock.calls[2][0]).toBe(`${basePath}/profitability`);
+  });
+
+  it("reads filters and writes every harvest mutation through CSRF-protected routes", async () => {
+    const request = {
+      code: "PNN-001",
+      harvestDate: "2027-05-20",
+      grossQuantity: 1250,
+      rejectedQuantity: 50,
+      quantityUnit: 1 as const,
+      qualityGrade: "Grade A",
+      storageLocation: "Gudang Timur",
+      notes: null,
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    await getHarvestBatches("org 1", "cycle 1", {
+      status: 2,
+      harvestDateFrom: "2027-05-01",
+      harvestDateTo: "2027-05-31",
+      quantityUnit: 1,
+      qualityGrade: "Grade A",
+    });
+
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `harvest-csrf-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "harvest-1", ...request }, index === 0 ? 201 : 200));
+    }
+
+    await createHarvestBatch("org 1", "cycle 1", request);
+    await updateHarvestBatch("org 1", "cycle 1", "harvest 1", {
+      harvestDate: request.harvestDate,
+      grossQuantity: request.grossQuantity,
+      rejectedQuantity: request.rejectedQuantity,
+      quantityUnit: request.quantityUnit,
+      qualityGrade: request.qualityGrade,
+      storageLocation: request.storageLocation,
+      notes: request.notes,
+    });
+    await confirmHarvestBatch("org 1", "cycle 1", "harvest 1");
+    await cancelHarvestBatch("org 1", "cycle 1", "harvest 1", {
+      cancellationReason: "Data timbangan tidak valid",
+    });
+
+    const collectionPath = "/api/v1/organizations/org%201/crop-cycles/cycle%201/harvest-batches";
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${collectionPath}?status=2&harvestDateFrom=2027-05-01&harvestDateTo=2027-05-31&quantityUnit=1&qualityGrade=Grade+A`,
+    );
+    expect([2, 4, 6, 8].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      collectionPath,
+      `${collectionPath}/harvest%201`,
+      `${collectionPath}/harvest%201/confirm`,
+      `${collectionPath}/harvest%201/cancel`,
+    ]);
+    expect([2, 4, 6, 8].map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
+    expect(new Headers((fetchMock.mock.calls[8][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("harvest-csrf-3");
   });
 
   it("writes every activity and resource mutation through CSRF-protected nested routes", async () => {
