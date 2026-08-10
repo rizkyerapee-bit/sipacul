@@ -768,6 +768,11 @@ export function CropCycleManagement({
         </div>
         <div className={styles.heroActions}>
           {!canWrite && <span className={styles.readOnlyBadge}>Mode baca</span>}
+          {cropCycles.length > 0 && (
+            <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}>
+              <Icon name="notes" /> Aktivitas lapangan
+            </button>
+          )}
           <button className={styles.refreshButton} type="button" disabled={isRefreshing || isLoading} onClick={() => void loadData(true)}>
             <Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}
           </button>
@@ -885,6 +890,7 @@ export function CropCycleManagement({
                 </div>
                 <div className={styles.detailActions}>
                   <span className={`${styles.statusBadge} ${styles[`status${selectedCycle.status}`]}`}>{cropCycleStatusLabels[selectedCycle.status]}</span>
+                  <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}><Icon name="notes" /> Aktivitas</button>
                   {canWrite && selectedCycle.status === 1 && (
                     <>
                       <button className={styles.secondaryButton} type="button" onClick={() => openEditor({ mode: "edit", cropCycleId: selectedCycle.id })}><Icon name="edit" /> Ubah</button>

@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  addCultivationActivityResource,
   addLandPlot,
   ApiError,
   bootstrapOwner,
   cancelCropCycle,
+  cancelCultivationActivity,
   completeCropCycle,
+  completeCultivationActivity,
   createCropCycle,
+  createCultivationActivity,
   createLand,
   deleteLand,
   getBootstrapStatus,
@@ -21,9 +25,14 @@ import {
   login,
   logout,
   removeLandPlot,
+  removeCultivationActivityResource,
   setLandActive,
   setLandPlotActive,
   startCropCycle,
+  startCultivationActivity,
+  updateCultivationActivityNotes,
+  updateCultivationActivityPlan,
+  updateCultivationActivityResource,
   updateCropCycleNotes,
   updateCropCyclePlan,
   updateLand,
@@ -147,6 +156,96 @@ describe("SiPacul API client", () => {
     expect(fetchMock.mock.calls[0][0]).toBe(`${basePath}/activities`);
     expect(fetchMock.mock.calls[1][0]).toBe(`${basePath}/harvest-batches`);
     expect(fetchMock.mock.calls[2][0]).toBe(`${basePath}/profitability`);
+  });
+
+  it("writes every activity and resource mutation through CSRF-protected nested routes", async () => {
+    const createRequest = {
+      code: "ACT-01",
+      name: "Pemupukan dasar",
+      activityType: 5 as const,
+      plannedDate: "2026-08-17",
+      cultivationSopId: "sop 1",
+      cultivationSopStepId: "step 1",
+      notes: null,
+    };
+    const resourceRequest = {
+      resourceType: 1 as const,
+      description: "Pupuk NPK",
+      quantity: 50,
+      unit: "kg",
+      unitCost: 8000,
+      notes: null,
+    };
+    for (let index = 0; index < 9; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `activity-csrf-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "activity-1", ...createRequest }, index === 0 ? 201 : 200));
+    }
+
+    await createCultivationActivity("org 1", "cycle 1", createRequest);
+    await updateCultivationActivityPlan("org 1", "cycle 1", "activity 1", {
+      name: createRequest.name,
+      activityType: createRequest.activityType,
+      plannedDate: createRequest.plannedDate,
+      notes: null,
+    });
+    await startCultivationActivity("org 1", "cycle 1", "activity 1", {
+      actualStartDate: "2026-08-17",
+    });
+    await completeCultivationActivity("org 1", "cycle 1", "activity 1", {
+      actualCompletionDate: "2026-08-18",
+      outcome: "Selesai",
+      issueNotes: null,
+      sopComplianceStatus: 3,
+      deviationReason: null,
+    });
+    await cancelCultivationActivity("org 1", "cycle 1", "activity 1", {
+      cancellationReason: "Tidak lagi diperlukan",
+    });
+    await updateCultivationActivityNotes("org 1", "cycle 1", "activity 1", {
+      notes: "Catatan",
+      issueNotes: "Kendala",
+    });
+    await addCultivationActivityResource("org 1", "cycle 1", "activity 1", resourceRequest);
+    await updateCultivationActivityResource(
+      "org 1",
+      "cycle 1",
+      "activity 1",
+      "resource 1",
+      {
+        description: resourceRequest.description,
+        quantity: resourceRequest.quantity,
+        unit: resourceRequest.unit,
+        unitCost: resourceRequest.unitCost,
+        notes: "Aktual",
+      },
+    );
+    await removeCultivationActivityResource(
+      "org 1",
+      "cycle 1",
+      "activity 1",
+      "resource 1",
+    );
+
+    const basePath = "/api/v1/organizations/org%201/crop-cycles/cycle%201/activities";
+    const activityPath = `${basePath}/activity%201`;
+    expect([1, 3, 5, 7, 9, 11, 13, 15, 17].map((index) => fetchMock.mock.calls[index][0]))
+      .toEqual([
+        basePath,
+        activityPath,
+        `${activityPath}/start`,
+        `${activityPath}/complete`,
+        `${activityPath}/cancel`,
+        `${activityPath}/notes`,
+        `${activityPath}/resources`,
+        `${activityPath}/resources/resource%201`,
+        `${activityPath}/resources/resource%201`,
+      ]);
+    expect([1, 3, 5, 7, 9, 11, 13, 15, 17]
+      .map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH", "PATCH", "PATCH", "POST", "PUT", "DELETE"]);
+    expect(new Headers((fetchMock.mock.calls[17][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("activity-csrf-8");
   });
 
   it("keeps dashboard reads cookie-based and uncached", async () => {

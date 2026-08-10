@@ -1,16 +1,20 @@
 import type {
   AntiforgeryTokenResponse,
+  AddCultivationActivityResourceRequest,
   ApiProblem,
   BootstrapOwnerRequest,
   BootstrapOwnerResponse,
   BootstrapStatus,
   AddLandPlotRequest,
   CancelCropCycleRequest,
+  CancelCultivationActivityRequest,
   Commodity,
   CompleteCropCycleRequest,
+  CompleteCultivationActivityRequest,
   CropCycle,
   CropCycleProfitability,
   CreateCropCycleRequest,
+  CreateCultivationActivityRequest,
   CreateLandRequest,
   CultivationSop,
   CultivationActivity,
@@ -20,6 +24,10 @@ import type {
   LoginRequest,
   Organization,
   StartCropCycleRequest,
+  StartCultivationActivityRequest,
+  UpdateCultivationActivityNotesRequest,
+  UpdateCultivationActivityPlanRequest,
+  UpdateCultivationActivityResourceRequest,
   UpdateCropCyclePlanRequest,
   UpdateCropCycleNotesRequest,
   UpdateLandPlotRequest,
@@ -383,6 +391,157 @@ export function getCultivationActivities(
       organizationId,
       `/crop-cycles/${encodeURIComponent(cropCycleId)}/activities`,
     ),
+  );
+}
+
+function getCultivationActivityPath(
+  organizationId: string,
+  cropCycleId: string,
+  suffix = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/activities${suffix}`,
+  );
+}
+
+export function createCultivationActivity(
+  organizationId: string,
+  cropCycleId: string,
+  request: CreateCultivationActivityRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(organizationId, cropCycleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCultivationActivityPlan(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  request: UpdateCultivationActivityPlanRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function startCultivationActivity(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  request: StartCultivationActivityRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/start`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function completeCultivationActivity(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  request: CompleteCultivationActivityRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/complete`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function cancelCultivationActivity(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  request: CancelCultivationActivityRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/cancel`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCultivationActivityNotes(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  request: UpdateCultivationActivityNotesRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/notes`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function addCultivationActivityResource(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  request: AddCultivationActivityResourceRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/resources`,
+    ),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCultivationActivityResource(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  resourceId: string,
+  request: UpdateCultivationActivityResourceRequest,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/resources/${encodeURIComponent(resourceId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function removeCultivationActivityResource(
+  organizationId: string,
+  cropCycleId: string,
+  activityId: string,
+  resourceId: string,
+): Promise<CultivationActivity> {
+  return csrfRequest<CultivationActivity>(
+    getCultivationActivityPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(activityId)}/resources/${encodeURIComponent(resourceId)}`,
+    ),
+    { method: "DELETE" },
   );
 }
 

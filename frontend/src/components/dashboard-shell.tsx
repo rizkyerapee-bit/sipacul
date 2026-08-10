@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { CropCycleManagement } from "@/components/crop-cycle-management";
+import { CultivationActivityManagement } from "@/components/cultivation-activity-management";
 import { LandManagement } from "@/components/land-management";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
@@ -291,7 +292,9 @@ export function DashboardShell() {
         <div className={styles.navigationLabel}>Menu utama</div>
         <nav className={styles.navigation}>
           {visibleNavigation.map((item) => {
-            const isActive = item.path === pathname;
+            const isActive = item.path === "/cultivation"
+              ? pathname.startsWith("/cultivation")
+              : item.path === pathname;
             const isAvailable = item.path !== null;
 
             return (
@@ -431,6 +434,13 @@ export function DashboardShell() {
           {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
           {pathname === "/lands" ? (
             <LandManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/cultivation/activities" ? (
+            <CultivationActivityManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}
               organizationId={state.membership?.organizationId ?? null}

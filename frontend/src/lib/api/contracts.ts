@@ -237,11 +237,18 @@ export type UpdateCropCycleNotesRequest = {
 
 export type CultivationActivityStatus = 1 | 2 | 3 | 4;
 
+export type CultivationActivityType =
+  | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+
+export type CultivationResourceType = 1 | 2 | 3 | 4 | 5;
+
+export type SopComplianceStatus = 1 | 2 | 3 | 4;
+
 export type CultivationActivityResource = {
   id: string;
   organizationId: string;
   cultivationActivityId: string;
-  resourceType: 1 | 2 | 3 | 4 | 5;
+  resourceType: CultivationResourceType;
   description: string;
   quantity: number;
   unit: string;
@@ -258,7 +265,7 @@ export type CultivationActivity = {
   cropCycleId: string;
   code: string;
   name: string;
-  activityType: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+  activityType: CultivationActivityType;
   cultivationSopId: string | null;
   cultivationSopStepId: string | null;
   sopStepSequenceSnapshot: number | null;
@@ -270,7 +277,7 @@ export type CultivationActivity = {
   actualStartDate: string | null;
   actualCompletionDate: string | null;
   status: CultivationActivityStatus;
-  sopComplianceStatus: 1 | 2 | 3 | 4;
+  sopComplianceStatus: SopComplianceStatus;
   outcome: string | null;
   issueNotes: string | null;
   deviationReason: string | null;
@@ -281,6 +288,58 @@ export type CultivationActivity = {
   createdAt: string;
   updatedAt: string | null;
 };
+
+export type CreateCultivationActivityRequest = {
+  code: string;
+  name: string;
+  activityType: CultivationActivityType;
+  plannedDate: string;
+  cultivationSopId: string | null;
+  cultivationSopStepId: string | null;
+  notes: string | null;
+};
+
+export type UpdateCultivationActivityPlanRequest = {
+  name: string;
+  activityType: CultivationActivityType;
+  plannedDate: string;
+  notes: string | null;
+};
+
+export type StartCultivationActivityRequest = {
+  actualStartDate: string;
+};
+
+export type CompleteCultivationActivityRequest = {
+  actualCompletionDate: string;
+  outcome: string | null;
+  issueNotes: string | null;
+  sopComplianceStatus: SopComplianceStatus;
+  deviationReason: string | null;
+};
+
+export type CancelCultivationActivityRequest = {
+  cancellationReason: string;
+};
+
+export type UpdateCultivationActivityNotesRequest = {
+  notes: string | null;
+  issueNotes: string | null;
+};
+
+export type AddCultivationActivityResourceRequest = {
+  resourceType: CultivationResourceType;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  notes: string | null;
+};
+
+export type UpdateCultivationActivityResourceRequest = Omit<
+  AddCultivationActivityResourceRequest,
+  "resourceType"
+>;
 
 export type HarvestQuantityUnit = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
