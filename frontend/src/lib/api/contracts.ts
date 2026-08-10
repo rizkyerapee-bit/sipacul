@@ -395,6 +395,93 @@ export type HarvestBatchFilter = {
   qualityGrade?: string;
 };
 
+export type SaleStatus = 1 | 2 | 3;
+
+export type SalePaymentTerm = 1 | 2;
+
+export type SaleLine = {
+  id: string;
+  harvestBatchId: string;
+  harvestBatchCodeSnapshot: string;
+  cropCycleIdSnapshot: string;
+  cropCycleCodeSnapshot: string;
+  commodityIdSnapshot: string;
+  commodityCodeSnapshot: string;
+  commodityNameSnapshot: string;
+  qualityGradeSnapshot: string | null;
+  quantity: number;
+  quantityUnit: HarvestQuantityUnit;
+  unitPrice: number;
+  lineDiscount: number;
+  lineTotal: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type Sale = {
+  id: string;
+  organizationId: string;
+  code: string;
+  saleDate: string;
+  buyerName: string;
+  buyerPhone: string | null;
+  buyerAddress: string | null;
+  paymentTerm: SalePaymentTerm;
+  dueDate: string | null;
+  discountAmount: number;
+  subtotal: number;
+  totalAmount: number;
+  status: SaleStatus;
+  confirmedAt: string | null;
+  cancellationReason: string | null;
+  notes: string | null;
+  lines: SaleLine[];
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CreateSaleRequest = {
+  code: string;
+  saleDate: string;
+  buyerName: string;
+  buyerPhone: string | null;
+  buyerAddress: string | null;
+  paymentTerm: SalePaymentTerm;
+  dueDate: string | null;
+  notes: string | null;
+};
+
+export type UpdateSaleRequest = Omit<CreateSaleRequest, "code"> & {
+  discountAmount: number;
+};
+
+export type AddSaleLineRequest = {
+  harvestBatchId: string;
+  quantity: number;
+  quantityUnit: HarvestQuantityUnit;
+  unitPrice: number;
+  lineDiscount: number;
+  notes: string | null;
+};
+
+export type UpdateSaleLineRequest = Omit<
+  AddSaleLineRequest,
+  "harvestBatchId" | "quantityUnit"
+>;
+
+export type CancelSaleRequest = {
+  cancellationReason: string;
+};
+
+export type SaleFilter = {
+  status?: SaleStatus;
+  saleDateFrom?: string;
+  saleDateTo?: string;
+  paymentTerm?: SalePaymentTerm;
+  buyerName?: string;
+};
+
 export type CropCycleProfitability = {
   organizationId: string;
   cropCycleId: string;

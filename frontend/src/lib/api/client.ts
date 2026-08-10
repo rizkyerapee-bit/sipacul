@@ -1,6 +1,7 @@
 import type {
   AntiforgeryTokenResponse,
   AddCultivationActivityResourceRequest,
+  AddSaleLineRequest,
   ApiProblem,
   BootstrapOwnerRequest,
   BootstrapOwnerResponse,
@@ -9,6 +10,7 @@ import type {
   CancelCropCycleRequest,
   CancelCultivationActivityRequest,
   CancelHarvestBatchRequest,
+  CancelSaleRequest,
   Commodity,
   CompleteCropCycleRequest,
   CompleteCultivationActivityRequest,
@@ -18,6 +20,7 @@ import type {
   CreateCultivationActivityRequest,
   CreateLandRequest,
   CreateHarvestBatchRequest,
+  CreateSaleRequest,
   CultivationSop,
   CultivationActivity,
   CurrentUser,
@@ -26,6 +29,8 @@ import type {
   Land,
   LoginRequest,
   Organization,
+  Sale,
+  SaleFilter,
   StartCropCycleRequest,
   StartCultivationActivityRequest,
   UpdateCultivationActivityNotesRequest,
@@ -36,6 +41,8 @@ import type {
   UpdateLandPlotRequest,
   UpdateLandRequest,
   UpdateHarvestBatchRequest,
+  UpdateSaleLineRequest,
+  UpdateSaleRequest,
 } from "@/lib/api/contracts";
 
 const API_PREFIX = "/api/v1";
@@ -635,6 +642,113 @@ export function cancelHarvestBatch(
       cropCycleId,
       `/${encodeURIComponent(harvestBatchId)}/cancel`,
     ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+function getSalesPath(
+  organizationId: string,
+  resourcePath = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/sales${resourcePath}`,
+  );
+}
+
+export function getSales(
+  organizationId: string,
+  filter: SaleFilter = {},
+): Promise<Sale[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.saleDateFrom) search.set("saleDateFrom", filter.saleDateFrom);
+  if (filter.saleDateTo) search.set("saleDateTo", filter.saleDateTo);
+  if (filter.paymentTerm !== undefined) search.set("paymentTerm", String(filter.paymentTerm));
+  if (filter.buyerName?.trim()) search.set("buyerName", filter.buyerName.trim());
+  const query = search.size > 0 ? `?${search.toString()}` : "";
+
+  return apiRequest<Sale[]>(getSalesPath(organizationId, query));
+}
+
+export function createSale(
+  organizationId: string,
+  request: CreateSaleRequest,
+): Promise<Sale> {
+  return csrfRequest<Sale>(getSalesPath(organizationId), {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+export function updateSale(
+  organizationId: string,
+  saleId: string,
+  request: UpdateSaleRequest,
+): Promise<Sale> {
+  return csrfRequest<Sale>(
+    getSalesPath(organizationId, `/${encodeURIComponent(saleId)}`),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function addSaleLine(
+  organizationId: string,
+  saleId: string,
+  request: AddSaleLineRequest,
+): Promise<Sale> {
+  return csrfRequest<Sale>(
+    getSalesPath(organizationId, `/${encodeURIComponent(saleId)}/lines`),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateSaleLine(
+  organizationId: string,
+  saleId: string,
+  saleLineId: string,
+  request: UpdateSaleLineRequest,
+): Promise<Sale> {
+  return csrfRequest<Sale>(
+    getSalesPath(
+      organizationId,
+      `/${encodeURIComponent(saleId)}/lines/${encodeURIComponent(saleLineId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function removeSaleLine(
+  organizationId: string,
+  saleId: string,
+  saleLineId: string,
+): Promise<Sale> {
+  return csrfRequest<Sale>(
+    getSalesPath(
+      organizationId,
+      `/${encodeURIComponent(saleId)}/lines/${encodeURIComponent(saleLineId)}`,
+    ),
+    { method: "DELETE" },
+  );
+}
+
+export function confirmSale(
+  organizationId: string,
+  saleId: string,
+): Promise<Sale> {
+  return csrfRequest<Sale>(
+    getSalesPath(organizationId, `/${encodeURIComponent(saleId)}/confirm`),
+    { method: "PATCH" },
+  );
+}
+
+export function cancelSale(
+  organizationId: string,
+  saleId: string,
+  request: CancelSaleRequest,
+): Promise<Sale> {
+  return csrfRequest<Sale>(
+    getSalesPath(organizationId, `/${encodeURIComponent(saleId)}/cancel`),
     { method: "PATCH", body: JSON.stringify(request) },
   );
 }

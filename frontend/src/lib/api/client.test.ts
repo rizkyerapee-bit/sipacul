@@ -2,18 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   addCultivationActivityResource,
   addLandPlot,
+  addSaleLine,
   ApiError,
   bootstrapOwner,
   cancelHarvestBatch,
   cancelCropCycle,
   cancelCultivationActivity,
+  cancelSale,
   completeCropCycle,
   completeCultivationActivity,
   confirmHarvestBatch,
+  confirmSale,
   createCropCycle,
   createCultivationActivity,
   createLand,
   createHarvestBatch,
+  createSale,
   deleteLand,
   getBootstrapStatus,
   getCommodities,
@@ -25,10 +29,12 @@ import {
   getHarvestBatches,
   getLands,
   getOrganization,
+  getSales,
   login,
   logout,
   removeLandPlot,
   removeCultivationActivityResource,
+  removeSaleLine,
   setLandActive,
   setLandPlotActive,
   startCropCycle,
@@ -41,6 +47,8 @@ import {
   updateLand,
   updateLandPlot,
   updateHarvestBatch,
+  updateSale,
+  updateSaleLine,
 } from "@/lib/api/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -218,6 +226,84 @@ describe("SiPacul API client", () => {
       .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
     expect(new Headers((fetchMock.mock.calls[8][1] as RequestInit).headers).get("X-CSRF"))
       .toBe("harvest-csrf-3");
+  });
+
+  it("reads filters and writes the complete sale lifecycle through CSRF-protected routes", async () => {
+    const createRequest = {
+      code: "PJL-001",
+      saleDate: "2027-05-22",
+      buyerName: "Koperasi Tani",
+      buyerPhone: "08123456789",
+      buyerAddress: "Pasar Induk",
+      paymentTerm: 2 as const,
+      dueDate: "2027-06-05",
+      notes: null,
+    };
+    const lineRequest = {
+      harvestBatchId: "harvest 1",
+      quantity: 600,
+      quantityUnit: 1 as const,
+      unitPrice: 10000,
+      lineDiscount: 0,
+      notes: null,
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    await getSales("org 1", {
+      status: 2,
+      saleDateFrom: "2027-05-01",
+      saleDateTo: "2027-05-31",
+      paymentTerm: 2,
+      buyerName: "Koperasi Tani",
+    });
+
+    for (let index = 0; index < 7; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `sale-csrf-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "sale-1", ...createRequest }, index === 0 ? 201 : 200));
+    }
+
+    await createSale("org 1", createRequest);
+    await updateSale("org 1", "sale 1", {
+      saleDate: createRequest.saleDate,
+      buyerName: createRequest.buyerName,
+      buyerPhone: createRequest.buyerPhone,
+      buyerAddress: createRequest.buyerAddress,
+      paymentTerm: createRequest.paymentTerm,
+      dueDate: createRequest.dueDate,
+      discountAmount: 100000,
+      notes: createRequest.notes,
+    });
+    await addSaleLine("org 1", "sale 1", lineRequest);
+    await updateSaleLine("org 1", "sale 1", "line 1", {
+      quantity: 500,
+      unitPrice: lineRequest.unitPrice,
+      lineDiscount: lineRequest.lineDiscount,
+      notes: null,
+    });
+    await removeSaleLine("org 1", "sale 1", "line 1");
+    await confirmSale("org 1", "sale 1");
+    await cancelSale("org 1", "sale 1", { cancellationReason: "Pesanan dibatalkan" });
+
+    const salePath = "/api/v1/organizations/org%201/sales/sale%201";
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "/api/v1/organizations/org%201/sales?status=2&saleDateFrom=2027-05-01&saleDateTo=2027-05-31&paymentTerm=2&buyerName=Koperasi+Tani",
+    );
+    expect([2, 4, 6, 8, 10, 12, 14].map((index) => fetchMock.mock.calls[index][0]))
+      .toEqual([
+        "/api/v1/organizations/org%201/sales",
+        salePath,
+        `${salePath}/lines`,
+        `${salePath}/lines/line%201`,
+        `${salePath}/lines/line%201`,
+        `${salePath}/confirm`,
+        `${salePath}/cancel`,
+      ]);
+    expect([2, 4, 6, 8, 10, 12, 14]
+      .map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "POST", "PUT", "DELETE", "PATCH", "PATCH"]);
+    expect(new Headers((fetchMock.mock.calls[14][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("sale-csrf-6");
   });
 
   it("writes every activity and resource mutation through CSRF-protected nested routes", async () => {

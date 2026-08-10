@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SiPacul.Api.Security;
 using SiPacul.Api.Tests.Security.Authorization;
 using SiPacul.Application.Security.Authorization;
 using SiPacul.Application.Sales;
@@ -140,6 +141,36 @@ public sealed class SaleEndpointTests
     }
 
     [Fact]
+    public async Task Create_WithAuthenticationCookieAndWithoutAntiforgery_ShouldReturnBadRequest()
+    {
+        var service = new StubService();
+
+        using var factory =
+            new SaleApiFactory(service);
+
+        using var client =
+            factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            BasePath)
+        {
+            Content = JsonContent.Create(
+                CreateRequest())
+        };
+
+        AddAuthenticationCookie(request);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
+
+        Assert.Null(service.LastCreateRequest);
+    }
+
+    [Fact]
     public async Task GetAll_ShouldBindFiltersAndReturnOk()
     {
         var service = new StubService();
@@ -217,6 +248,30 @@ public sealed class SaleEndpointTests
 
         Assert.Equal(
             HttpStatusCode.NotFound,
+            response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetAll_WithAuthenticationCookieAndWithoutAntiforgery_ShouldReturnOk()
+    {
+        var service = new StubService();
+
+        using var factory =
+            new SaleApiFactory(service);
+
+        using var client =
+            factory.CreateHttpsClient();
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            BasePath);
+
+        AddAuthenticationCookie(request);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
             response.StatusCode);
     }
 
@@ -713,6 +768,16 @@ public sealed class SaleEndpointTests
 
     private static string BasePath =>
         $"/api/v1/organizations/{OrganizationId}/sales";
+
+    private static void AddAuthenticationCookie(
+        HttpRequestMessage request)
+    {
+        request.Headers.Add(
+            "Cookie",
+            SiPaculAuthenticationDefaults
+                .AuthenticationCookieName +
+            "=test-authentication-cookie");
+    }
 
     private static CreateSaleRequest CreateRequest()
     {

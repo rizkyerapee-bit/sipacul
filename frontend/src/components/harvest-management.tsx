@@ -626,6 +626,7 @@ export function HarvestManagement({ organization, organizationId, permissions }:
                 <div className={styles.detailActions}>
                   <span className={`${styles.statusBadge} ${styles[`status${selectedBatch.status}`]}`}>{harvestStatusLabels[selectedBatch.status]}</span>
                   {canWrite && selectedBatch.status === 1 && selectedCycle?.status === 2 && <><button className={styles.secondaryButton} type="button" onClick={() => { setModalError(null); setEditor({ harvestBatchId: selectedBatch.id }); }}><Icon name="edit" /> Ubah</button><button className={styles.primaryButton} type="button" onClick={() => { setModalError(null); setAction({ kind: "confirm", harvestBatchId: selectedBatch.id }); }}><Icon name="check" /> Konfirmasi</button></>}
+                  {selectedBatch.status === 2 && selectedBatch.availableQuantity > 0 && permissions.includes("sales.read") && <button className={styles.secondaryButton} type="button" onClick={() => router.push("/sales")}><Icon name="stock" /> Jual stok</button>}
                 </div>
               </header>
 
