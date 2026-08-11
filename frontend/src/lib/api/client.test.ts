@@ -5,6 +5,7 @@ import {
   addSaleLine,
   ApiError,
   bootstrapOwner,
+  cancelCultivationExpense,
   cancelHarvestBatch,
   cancelCropCycle,
   cancelCultivationActivity,
@@ -13,10 +14,12 @@ import {
   completeCropCycle,
   completeCultivationActivity,
   confirmHarvestBatch,
+  confirmCultivationExpense,
   confirmSale,
   confirmSalePayment,
   createCropCycle,
   createCultivationActivity,
+  createCultivationExpense,
   createLand,
   createHarvestBatch,
   createSale,
@@ -28,6 +31,7 @@ import {
   getCropCycles,
   getCultivationSops,
   getCultivationActivities,
+  getCultivationExpenses,
   getCurrentUser,
   getHarvestBatches,
   getLands,
@@ -47,6 +51,7 @@ import {
   updateCultivationActivityNotes,
   updateCultivationActivityPlan,
   updateCultivationActivityResource,
+  updateCultivationExpense,
   updateCropCycleNotes,
   updateCropCyclePlan,
   updateLand,
@@ -384,6 +389,74 @@ describe("SiPacul API client", () => {
       .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
     expect(new Headers((fetchMock.mock.calls[9][1] as RequestInit).headers).get("X-CSRF"))
       .toBe("payment-csrf-3");
+  });
+
+  it("reads filters and writes the complete cultivation expense lifecycle through CSRF-protected routes", async () => {
+    const request = {
+      code: "BIA-001",
+      expenseDate: "2027-02-15",
+      category: 5 as const,
+      description: "Upah pengolahan lahan",
+      amount: 1_250_000,
+      payeeName: "Kelompok Tani Maju",
+      referenceNumber: "KWT-2027-01",
+      evidenceUrl: "https://example.test/kwt-2027-01",
+      notes: null,
+    };
+
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    await getCultivationExpenses("org 1", "cycle 1", {
+      status: 2,
+      category: 5,
+      expenseDateFrom: "2027-02-01",
+      expenseDateTo: "2027-02-28",
+      payeeName: "Kelompok Tani Maju",
+    });
+
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({
+          requestToken: `expense-csrf-${index}`,
+          headerName: "X-CSRF",
+        }))
+        .mockResolvedValueOnce(jsonResponse({
+          id: "expense-1",
+          cropCycleId: "cycle 1",
+          ...request,
+        }, index === 0 ? 201 : 200));
+    }
+
+    await createCultivationExpense("org 1", "cycle 1", request);
+    await updateCultivationExpense("org 1", "cycle 1", "expense 1", {
+      expenseDate: request.expenseDate,
+      category: 3,
+      description: "Pupuk dasar",
+      amount: 850_000,
+      payeeName: "Kios Tani",
+      referenceNumber: null,
+      evidenceUrl: null,
+      notes: "Transfer",
+    });
+    await confirmCultivationExpense("org 1", "cycle 1", "expense 1");
+    await cancelCultivationExpense("org 1", "cycle 1", "expense 1", {
+      cancellationReason: "Kuitansi duplikat",
+    });
+
+    const expensePath = "/api/v1/organizations/org%201/crop-cycles/cycle%201/expenses";
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${expensePath}?status=2&category=5&expenseDateFrom=2027-02-01&expenseDateTo=2027-02-28&payeeName=Kelompok+Tani+Maju`,
+    );
+    expect([2, 4, 6, 8].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      expensePath,
+      `${expensePath}/expense%201`,
+      `${expensePath}/expense%201/confirm`,
+      `${expensePath}/expense%201/cancel`,
+    ]);
+    expect([2, 4, 6, 8]
+      .map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
+    expect(new Headers((fetchMock.mock.calls[8][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("expense-csrf-3");
   });
 
   it("writes every activity and resource mutation through CSRF-protected nested routes", async () => {

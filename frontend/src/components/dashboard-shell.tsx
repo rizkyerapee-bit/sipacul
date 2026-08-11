@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { CropCycleManagement } from "@/components/crop-cycle-management";
 import { CultivationActivityManagement } from "@/components/cultivation-activity-management";
+import { ExpenseManagement } from "@/components/expense-management";
 import { HarvestManagement } from "@/components/harvest-management";
 import { LandManagement } from "@/components/land-management";
 import { ReceivableManagement } from "@/components/receivable-management";
@@ -64,7 +65,7 @@ const navigation: NavigationItem[] = [
   { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout", path: "/cultivation" },
   { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: "/harvest" },
   { label: "Penjualan", caption: "Transaksi hasil panen", permission: "sales.read", icon: "sales", path: "/sales" },
-  { label: "Keuangan", caption: "Pembayaran dan piutang", permission: "finance.read", icon: "finance", path: "/finance" },
+  { label: "Keuangan", caption: "Kas, piutang, dan biaya", permission: "finance.read", icon: "finance", path: "/finance" },
   { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: null },
   { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team", path: null },
 ];
@@ -297,7 +298,9 @@ export function DashboardShell() {
           {visibleNavigation.map((item) => {
             const isActive = item.path === "/cultivation"
               ? pathname.startsWith("/cultivation")
-              : item.path === pathname;
+              : item.path === "/finance"
+                ? pathname.startsWith("/finance")
+                : item.path === pathname;
             const isAvailable = item.path !== null;
 
             return (
@@ -451,6 +454,13 @@ export function DashboardShell() {
             />
           ) : pathname === "/sales" ? (
             <SaleManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/finance/expenses" ? (
+            <ExpenseManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}
               organizationId={state.membership?.organizationId ?? null}

@@ -483,6 +483,7 @@ export function ReceivableManagement({ organization, organizationId, permissions
         </div>
         <div className={styles.heroActions}>
           {!canWrite && <span className={styles.readOnlyBadge}>Mode baca</span>}
+          <button className={styles.secondaryButton} type="button" onClick={() => router.push("/finance/expenses")}><Icon name="invoice" /> Biaya budidaya</button>
           <button className={styles.secondaryButton} type="button" disabled={isRefreshing || isLoading} onClick={() => void refresh()}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>
           {canWrite && selectedEntry && !selectedEntry.receivable.isFullyPaid && <button className={styles.primaryButton} type="button" onClick={() => { setModalError(null); setEditor({ saleId: selectedEntry.sale.id, paymentId: null }); }}><Icon name="add" /> Terima pembayaran</button>}
         </div>

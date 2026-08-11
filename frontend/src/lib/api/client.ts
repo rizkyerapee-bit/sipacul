@@ -9,6 +9,7 @@ import type {
   AddLandPlotRequest,
   CancelCropCycleRequest,
   CancelCultivationActivityRequest,
+  CancelCultivationExpenseRequest,
   CancelHarvestBatchRequest,
   CancelSalePaymentRequest,
   CancelSaleRequest,
@@ -17,6 +18,7 @@ import type {
   CompleteCultivationActivityRequest,
   CropCycle,
   CropCycleProfitability,
+  CreateCultivationExpenseRequest,
   CreateCropCycleRequest,
   CreateCultivationActivityRequest,
   CreateLandRequest,
@@ -25,6 +27,8 @@ import type {
   CreateSaleRequest,
   CultivationSop,
   CultivationActivity,
+  CultivationExpense,
+  CultivationExpenseFilter,
   CurrentUser,
   HarvestBatch,
   HarvestBatchFilter,
@@ -41,6 +45,7 @@ import type {
   UpdateCultivationActivityNotesRequest,
   UpdateCultivationActivityPlanRequest,
   UpdateCultivationActivityResourceRequest,
+  UpdateCultivationExpenseRequest,
   UpdateCropCyclePlanRequest,
   UpdateCropCycleNotesRequest,
   UpdateLandPlotRequest,
@@ -852,6 +857,93 @@ export function cancelSalePayment(
       organizationId,
       saleId,
       `/${encodeURIComponent(paymentId)}/cancel`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+function getCultivationExpensesPath(
+  organizationId: string,
+  cropCycleId: string,
+  suffix = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/expenses${suffix}`,
+  );
+}
+
+export function getCultivationExpenses(
+  organizationId: string,
+  cropCycleId: string,
+  filter: CultivationExpenseFilter = {},
+): Promise<CultivationExpense[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.category !== undefined) search.set("category", String(filter.category));
+  if (filter.expenseDateFrom) search.set("expenseDateFrom", filter.expenseDateFrom);
+  if (filter.expenseDateTo) search.set("expenseDateTo", filter.expenseDateTo);
+  if (filter.payeeName) search.set("payeeName", filter.payeeName);
+  const query = search.toString();
+
+  return apiRequest<CultivationExpense[]>(
+    `${getCultivationExpensesPath(organizationId, cropCycleId)}${query ? `?${query}` : ""}`,
+  );
+}
+
+export function createCultivationExpense(
+  organizationId: string,
+  cropCycleId: string,
+  request: CreateCultivationExpenseRequest,
+): Promise<CultivationExpense> {
+  return csrfRequest<CultivationExpense>(
+    getCultivationExpensesPath(organizationId, cropCycleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCultivationExpense(
+  organizationId: string,
+  cropCycleId: string,
+  expenseId: string,
+  request: UpdateCultivationExpenseRequest,
+): Promise<CultivationExpense> {
+  return csrfRequest<CultivationExpense>(
+    getCultivationExpensesPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(expenseId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function confirmCultivationExpense(
+  organizationId: string,
+  cropCycleId: string,
+  expenseId: string,
+): Promise<CultivationExpense> {
+  return csrfRequest<CultivationExpense>(
+    getCultivationExpensesPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(expenseId)}/confirm`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function cancelCultivationExpense(
+  organizationId: string,
+  cropCycleId: string,
+  expenseId: string,
+  request: CancelCultivationExpenseRequest,
+): Promise<CultivationExpense> {
+  return csrfRequest<CultivationExpense>(
+    getCultivationExpensesPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(expenseId)}/cancel`,
     ),
     { method: "PATCH", body: JSON.stringify(request) },
   );

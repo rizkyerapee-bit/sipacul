@@ -225,4 +225,3 @@ export function summarizeReceivables(entries: ReceivableEntry[], today: string) 
     collectionRate: billed > 0 ? (collected / billed) * 100 : 0,
   };
 }
-

@@ -549,6 +549,63 @@ export type SalePaymentFilter = {
   receivedFrom?: string;
 };
 
+export type CultivationExpenseStatus = 1 | 2 | 3;
+
+export type CultivationExpenseCategory =
+  | 1 | 2 | 3 | 4 | 5
+  | 6 | 7 | 8 | 9 | 10
+  | 11 | 12 | 13 | 14 | 15;
+
+export type CultivationExpense = {
+  id: string;
+  organizationId: string;
+  cropCycleId: string;
+  code: string;
+  expenseDate: string;
+  category: CultivationExpenseCategory;
+  description: string;
+  amount: number;
+  payeeName: string | null;
+  referenceNumber: string | null;
+  evidenceUrl: string | null;
+  notes: string | null;
+  status: CultivationExpenseStatus;
+  isRecognizedCost: boolean;
+  confirmedAt: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CreateCultivationExpenseRequest = {
+  code: string;
+  expenseDate: string;
+  category: CultivationExpenseCategory;
+  description: string;
+  amount: number;
+  payeeName: string | null;
+  referenceNumber: string | null;
+  evidenceUrl: string | null;
+  notes: string | null;
+};
+
+export type UpdateCultivationExpenseRequest = Omit<
+  CreateCultivationExpenseRequest,
+  "code"
+>;
+
+export type CancelCultivationExpenseRequest = {
+  cancellationReason: string;
+};
+
+export type CultivationExpenseFilter = {
+  status?: CultivationExpenseStatus;
+  category?: CultivationExpenseCategory;
+  expenseDateFrom?: string;
+  expenseDateTo?: string;
+  payeeName?: string;
+};
+
 export type CropCycleProfitability = {
   organizationId: string;
   cropCycleId: string;
