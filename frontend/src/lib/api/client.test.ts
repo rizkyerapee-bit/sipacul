@@ -9,15 +9,18 @@ import {
   cancelCropCycle,
   cancelCultivationActivity,
   cancelSale,
+  cancelSalePayment,
   completeCropCycle,
   completeCultivationActivity,
   confirmHarvestBatch,
   confirmSale,
+  confirmSalePayment,
   createCropCycle,
   createCultivationActivity,
   createLand,
   createHarvestBatch,
   createSale,
+  createSalePayment,
   deleteLand,
   getBootstrapStatus,
   getCommodities,
@@ -30,6 +33,8 @@ import {
   getLands,
   getOrganization,
   getSales,
+  getSalePayments,
+  getSaleReceivable,
   login,
   logout,
   removeLandPlot,
@@ -48,6 +53,7 @@ import {
   updateLandPlot,
   updateHarvestBatch,
   updateSale,
+  updateSalePayment,
   updateSaleLine,
 } from "@/lib/api/client";
 
@@ -304,6 +310,80 @@ describe("SiPacul API client", () => {
       .toEqual(["POST", "PUT", "POST", "PUT", "DELETE", "PATCH", "PATCH"]);
     expect(new Headers((fetchMock.mock.calls[14][1] as RequestInit).headers).get("X-CSRF"))
       .toBe("sale-csrf-6");
+  });
+
+  it("reads receivables and writes the complete payment lifecycle through CSRF-protected routes", async () => {
+    const request = {
+      code: "BYR-001",
+      paymentDate: "2027-05-24",
+      amount: 2_500_000,
+      paymentMethod: 2 as const,
+      referenceNumber: "TRX-20270524",
+      receivedFrom: "Koperasi Tani",
+      notes: null,
+    };
+
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({
+        saleId: "sale 1",
+        saleTotalAmount: 6_000_000,
+        confirmedPaidAmount: 2_500_000,
+        outstandingReceivable: 3_500_000,
+      }));
+
+    await getSalePayments("org 1", "sale 1", {
+      status: 2,
+      paymentMethod: 2,
+      paymentDateFrom: "2027-05-01",
+      paymentDateTo: "2027-05-31",
+      receivedFrom: "Koperasi Tani",
+    });
+    await getSaleReceivable("org 1", "sale 1");
+
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({
+          requestToken: `payment-csrf-${index}`,
+          headerName: "X-CSRF",
+        }))
+        .mockResolvedValueOnce(jsonResponse({
+          id: "payment-1",
+          saleId: "sale 1",
+          ...request,
+        }, index === 0 ? 201 : 200));
+    }
+
+    await createSalePayment("org 1", "sale 1", request);
+    await updateSalePayment("org 1", "sale 1", "payment 1", {
+      paymentDate: request.paymentDate,
+      amount: request.amount,
+      paymentMethod: 1,
+      referenceNumber: null,
+      receivedFrom: request.receivedFrom,
+      notes: "Diterima tunai",
+    });
+    await confirmSalePayment("org 1", "sale 1", "payment 1");
+    await cancelSalePayment("org 1", "sale 1", "payment 1", {
+      cancellationReason: "Transfer dikembalikan",
+    });
+
+    const paymentPath = "/api/v1/organizations/org%201/sales/sale%201/payments";
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${paymentPath}?status=2&paymentMethod=2&paymentDateFrom=2027-05-01&paymentDateTo=2027-05-31&receivedFrom=Koperasi+Tani`,
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe(`${paymentPath}/receivable`);
+    expect([3, 5, 7, 9].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      paymentPath,
+      `${paymentPath}/payment%201`,
+      `${paymentPath}/payment%201/confirm`,
+      `${paymentPath}/payment%201/cancel`,
+    ]);
+    expect([3, 5, 7, 9]
+      .map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
+    expect(new Headers((fetchMock.mock.calls[9][1] as RequestInit).headers).get("X-CSRF"))
+      .toBe("payment-csrf-3");
   });
 
   it("writes every activity and resource mutation through CSRF-protected nested routes", async () => {

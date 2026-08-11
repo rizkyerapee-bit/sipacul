@@ -448,6 +448,7 @@ export function SaleManagement({ organization, organizationId, permissions }: Pr
   const canRead = permissions.includes("sales.read");
   const canWrite = permissions.includes("sales.write");
   const canReadHarvest = permissions.includes("harvest.read");
+  const canReadFinance = permissions.includes("finance.read");
   const filteredSales = useMemo(
     () => filterSales(sales, query, statusFilter, paymentFilter),
     [paymentFilter, query, sales, statusFilter],
@@ -703,7 +704,7 @@ export function SaleManagement({ organization, organizationId, permissions }: Pr
         <article className={styles.metricCard}><span>Total transaksi</span><strong>{summary.saleCount}</strong><small>{summary.confirmedCount} dikonfirmasi</small><i><Icon name="invoice" /></i></article>
         <article className={`${styles.metricCard} ${styles.metricPrimary}`}><span>Pendapatan diakui</span><strong>{formatSaleCurrency(summary.confirmedRevenue)}</strong><small>Penjualan terkonfirmasi</small><i><Icon name="trend" /></i></article>
         <article className={styles.metricCard}><span>Nilai draf</span><strong>{formatSaleCurrency(summary.draftValue)}</strong><small>Belum mengurangi stok</small><i><Icon name="money" /></i></article>
-        <article className={styles.metricCard}><span>Penjualan kredit</span><strong>{formatSaleCurrency(summary.creditRevenue)}</strong><small>Piutang dikelola pada tahap berikutnya</small><i><Icon name="credit" /></i></article>
+        <article className={styles.metricCard}><span>Penjualan kredit</span><strong>{formatSaleCurrency(summary.creditRevenue)}</strong><small>{canReadFinance ? "Kelola pada menu Keuangan" : "Memerlukan akses keuangan"}</small><i><Icon name="credit" /></i></article>
       </div>
 
       <div className={styles.inventoryStrip}>
@@ -741,6 +742,7 @@ export function SaleManagement({ organization, organizationId, permissions }: Pr
                 <div className={styles.detailActions}>
                   <span className={`${styles.statusBadge} ${styles[`status${selectedSale.status}`]}`}>{saleStatusLabels[selectedSale.status]}</span>
                   {canWrite && selectedSale.status === 1 && <><button className={styles.secondaryButton} type="button" onClick={() => { setModalError(null); setEditor({ saleId: selectedSale.id }); }}><Icon name="edit" /> Ubah</button><button className={styles.primaryButton} type="button" disabled={selectedSale.lines.length === 0} title={selectedSale.lines.length === 0 ? "Tambahkan minimal satu item" : undefined} onClick={() => { setModalError(null); setAction({ kind: "confirm", saleId: selectedSale.id }); }}><Icon name="check" /> Konfirmasi</button></>}
+                  {canReadFinance && selectedSale.status === 2 && <button className={styles.primaryButton} type="button" onClick={() => router.push(`/finance?saleId=${encodeURIComponent(selectedSale.id)}`)}><Icon name="money" /> Kelola pembayaran</button>}
                 </div>
               </header>
 

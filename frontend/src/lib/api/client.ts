@@ -10,6 +10,7 @@ import type {
   CancelCropCycleRequest,
   CancelCultivationActivityRequest,
   CancelHarvestBatchRequest,
+  CancelSalePaymentRequest,
   CancelSaleRequest,
   Commodity,
   CompleteCropCycleRequest,
@@ -20,6 +21,7 @@ import type {
   CreateCultivationActivityRequest,
   CreateLandRequest,
   CreateHarvestBatchRequest,
+  CreateSalePaymentRequest,
   CreateSaleRequest,
   CultivationSop,
   CultivationActivity,
@@ -31,6 +33,9 @@ import type {
   Organization,
   Sale,
   SaleFilter,
+  SalePayment,
+  SalePaymentFilter,
+  SaleReceivable,
   StartCropCycleRequest,
   StartCultivationActivityRequest,
   UpdateCultivationActivityNotesRequest,
@@ -41,6 +46,7 @@ import type {
   UpdateLandPlotRequest,
   UpdateLandRequest,
   UpdateHarvestBatchRequest,
+  UpdateSalePaymentRequest,
   UpdateSaleLineRequest,
   UpdateSaleRequest,
 } from "@/lib/api/contracts";
@@ -749,6 +755,104 @@ export function cancelSale(
 ): Promise<Sale> {
   return csrfRequest<Sale>(
     getSalesPath(organizationId, `/${encodeURIComponent(saleId)}/cancel`),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+function getSalePaymentsPath(
+  organizationId: string,
+  saleId: string,
+  resourcePath = "",
+): string {
+  return getSalesPath(
+    organizationId,
+    `/${encodeURIComponent(saleId)}/payments${resourcePath}`,
+  );
+}
+
+export function getSalePayments(
+  organizationId: string,
+  saleId: string,
+  filter: SalePaymentFilter = {},
+): Promise<SalePayment[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.paymentMethod !== undefined) {
+    search.set("paymentMethod", String(filter.paymentMethod));
+  }
+  if (filter.paymentDateFrom) search.set("paymentDateFrom", filter.paymentDateFrom);
+  if (filter.paymentDateTo) search.set("paymentDateTo", filter.paymentDateTo);
+  if (filter.receivedFrom?.trim()) search.set("receivedFrom", filter.receivedFrom.trim());
+  const query = search.size > 0 ? `?${search.toString()}` : "";
+
+  return apiRequest<SalePayment[]>(
+    getSalePaymentsPath(organizationId, saleId, query),
+  );
+}
+
+export function getSaleReceivable(
+  organizationId: string,
+  saleId: string,
+): Promise<SaleReceivable> {
+  return apiRequest<SaleReceivable>(
+    getSalePaymentsPath(organizationId, saleId, "/receivable"),
+  );
+}
+
+export function createSalePayment(
+  organizationId: string,
+  saleId: string,
+  request: CreateSalePaymentRequest,
+): Promise<SalePayment> {
+  return csrfRequest<SalePayment>(
+    getSalePaymentsPath(organizationId, saleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateSalePayment(
+  organizationId: string,
+  saleId: string,
+  paymentId: string,
+  request: UpdateSalePaymentRequest,
+): Promise<SalePayment> {
+  return csrfRequest<SalePayment>(
+    getSalePaymentsPath(
+      organizationId,
+      saleId,
+      `/${encodeURIComponent(paymentId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function confirmSalePayment(
+  organizationId: string,
+  saleId: string,
+  paymentId: string,
+): Promise<SalePayment> {
+  return csrfRequest<SalePayment>(
+    getSalePaymentsPath(
+      organizationId,
+      saleId,
+      `/${encodeURIComponent(paymentId)}/confirm`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function cancelSalePayment(
+  organizationId: string,
+  saleId: string,
+  paymentId: string,
+  request: CancelSalePaymentRequest,
+): Promise<SalePayment> {
+  return csrfRequest<SalePayment>(
+    getSalePaymentsPath(
+      organizationId,
+      saleId,
+      `/${encodeURIComponent(paymentId)}/cancel`,
+    ),
     { method: "PATCH", body: JSON.stringify(request) },
   );
 }

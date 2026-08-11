@@ -482,6 +482,73 @@ export type SaleFilter = {
   buyerName?: string;
 };
 
+export type SalePaymentStatus = 1 | 2 | 3;
+
+export type SalePaymentMethod = 1 | 2 | 3;
+
+export type SalePaymentState = 1 | 2 | 3;
+
+export type SalePayment = {
+  id: string;
+  organizationId: string;
+  saleId: string;
+  code: string;
+  paymentDate: string;
+  amount: number;
+  paymentMethod: SalePaymentMethod;
+  referenceNumber: string | null;
+  receivedFrom: string | null;
+  notes: string | null;
+  status: SalePaymentStatus;
+  isCollectedRevenue: boolean;
+  confirmedAt: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type SaleReceivable = {
+  saleId: string;
+  saleCode: string;
+  saleDate: string;
+  buyerName: string;
+  paymentTerm: SalePaymentTerm;
+  dueDate: string | null;
+  saleTotalAmount: number;
+  confirmedPaidAmount: number;
+  outstandingReceivable: number;
+  paymentState: SalePaymentState;
+  isFullyPaid: boolean;
+  hasCollectedRevenue: boolean;
+};
+
+export type CreateSalePaymentRequest = {
+  code: string;
+  paymentDate: string;
+  amount: number;
+  paymentMethod: SalePaymentMethod;
+  referenceNumber: string | null;
+  receivedFrom: string | null;
+  notes: string | null;
+};
+
+export type UpdateSalePaymentRequest = Omit<
+  CreateSalePaymentRequest,
+  "code"
+>;
+
+export type CancelSalePaymentRequest = {
+  cancellationReason: string;
+};
+
+export type SalePaymentFilter = {
+  status?: SalePaymentStatus;
+  paymentMethod?: SalePaymentMethod;
+  paymentDateFrom?: string;
+  paymentDateTo?: string;
+  receivedFrom?: string;
+};
+
 export type CropCycleProfitability = {
   organizationId: string;
   cropCycleId: string;
