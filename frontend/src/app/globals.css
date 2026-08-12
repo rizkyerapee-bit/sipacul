@@ -291,6 +291,52 @@ select:disabled {
   padding: 0 15px;
 }
 
+.password-control {
+  position: relative;
+}
+
+.password-control input {
+  padding-right: 52px;
+}
+
+.password-control__toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: var(--ink-500);
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+  transform: translateY(-50%);
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.password-control__toggle:hover {
+  color: var(--forest-800);
+  background: var(--forest-50);
+}
+
+.password-control__toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(45, 104, 86, 0.16);
+}
+
+.password-control__toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
 .field input:focus,
 .organization-switcher select:focus {
   border-color: var(--forest-700);

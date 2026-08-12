@@ -5,6 +5,7 @@ import {
   addSaleLine,
   ApiError,
   bootstrapOwner,
+  cancelCapitalContribution,
   cancelCultivationExpense,
   cancelHarvestBatch,
   cancelCropCycle,
@@ -14,10 +15,13 @@ import {
   completeCropCycle,
   completeCultivationActivity,
   confirmHarvestBatch,
+  confirmCapitalContribution,
   confirmCultivationExpense,
   confirmSale,
   confirmSalePayment,
   createCropCycle,
+  createCapitalContribution,
+  createProfitSharingSettlement,
   createCultivationActivity,
   createCultivationExpense,
   createLand,
@@ -26,6 +30,7 @@ import {
   createSalePayment,
   deleteLand,
   getBootstrapStatus,
+  getCapitalContributions,
   getCommodities,
   getCropCycleProfitability,
   getCropCycles,
@@ -36,6 +41,7 @@ import {
   getHarvestBatches,
   getLands,
   getOrganization,
+  getProfitSharingSettlements,
   getSales,
   getSalePayments,
   getSaleReceivable,
@@ -49,6 +55,7 @@ import {
   startCropCycle,
   startCultivationActivity,
   updateCultivationActivityNotes,
+  updateCapitalContribution,
   updateCultivationActivityPlan,
   updateCultivationActivityResource,
   updateCultivationExpense,
@@ -60,6 +67,9 @@ import {
   updateSale,
   updateSalePayment,
   updateSaleLine,
+  updateProfitSharingSettlement,
+  finalizeProfitSharingSettlement,
+  voidProfitSharingSettlement,
 } from "@/lib/api/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -707,5 +717,101 @@ describe("SiPacul API client", () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
 
     await expect(getCurrentUser()).rejects.toMatchObject({ status: 403, message: "Permintaan gagal dengan status 403." });
+  });
+
+  it("reads and mutates capital contributions through encoded CSRF routes", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    await getCapitalContributions("org 1", "cycle 1", {
+      status: 2,
+      contributorRole: 1,
+      contributorCode: " INV-01 ",
+    });
+
+    const request = {
+      code: "MOD-001",
+      contributionDate: "2026-08-11",
+      contributorCode: "INV-01",
+      contributorName: "Investor Utama",
+      contributorRole: 1 as const,
+      amount: 9_000_000,
+      paymentMethod: 2 as const,
+      referenceNumber: null,
+      notes: null,
+    };
+
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `capital-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "capital 1" }, index === 0 ? 201 : 200));
+    }
+
+    await createCapitalContribution("org 1", "cycle 1", request);
+    await updateCapitalContribution("org 1", "cycle 1", "capital 1", {
+      contributionDate: request.contributionDate,
+      contributorCode: request.contributorCode,
+      contributorName: request.contributorName,
+      contributorRole: request.contributorRole,
+      amount: request.amount,
+      paymentMethod: request.paymentMethod,
+      referenceNumber: request.referenceNumber,
+      notes: request.notes,
+    });
+    await confirmCapitalContribution("org 1", "cycle 1", "capital 1");
+    await cancelCapitalContribution("org 1", "cycle 1", "capital 1", {
+      cancellationReason: "Setoran dikoreksi",
+    });
+
+    const base = "/api/v1/organizations/org%201/crop-cycles/cycle%201/capital-contributions";
+    expect(fetchMock.mock.calls[0][0]).toBe(`${base}?status=2&contributorRole=1&contributorCode=INV-01`);
+    expect([2, 4, 6, 8].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      base,
+      `${base}/capital%201`,
+      `${base}/capital%201/confirm`,
+      `${base}/capital%201/cancel`,
+    ]);
+    expect([2, 4, 6, 8].map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
+  });
+
+  it("reads and mutates profit-sharing settlements through encoded CSRF routes", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+    await getProfitSharingSettlements("org 1", "cycle 1", {
+      status: 1,
+      managingPartnerCode: " MIT-01 ",
+    });
+
+    const request = {
+      code: "BH-001",
+      settlementDate: "2026-12-20",
+      managingPartnerCode: "MIT-01",
+      managingPartnerName: "Mitra Tani",
+      notes: null,
+    };
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ requestToken: `sharing-${index}`, headerName: "X-CSRF" }))
+        .mockResolvedValueOnce(jsonResponse({ id: "sharing 1" }, index === 0 ? 201 : 200));
+    }
+
+    await createProfitSharingSettlement("org 1", "cycle 1", request);
+    await updateProfitSharingSettlement("org 1", "cycle 1", "sharing 1", {
+      settlementDate: request.settlementDate,
+      notes: "Diperiksa",
+    });
+    await finalizeProfitSharingSettlement("org 1", "cycle 1", "sharing 1");
+    await voidProfitSharingSettlement("org 1", "cycle 1", "sharing 1", {
+      voidReason: "Perlu koreksi sumber",
+    });
+
+    const base = "/api/v1/organizations/org%201/crop-cycles/cycle%201/profit-sharing-settlements";
+    expect(fetchMock.mock.calls[0][0]).toBe(`${base}?status=1&managingPartnerCode=MIT-01`);
+    expect([2, 4, 6, 8].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      base,
+      `${base}/sharing%201`,
+      `${base}/sharing%201/finalize`,
+      `${base}/sharing%201/void`,
+    ]);
+    expect([2, 4, 6, 8].map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
   });
 });

@@ -606,6 +606,65 @@ export type CultivationExpenseFilter = {
   payeeName?: string;
 };
 
+export type CapitalContributorRole = 1 | 2;
+export type CapitalContributionPaymentMethod = 1 | 2 | 3;
+export type CapitalContributionStatus = 1 | 2 | 3;
+
+export type CapitalContribution = {
+  id: string;
+  organizationId: string;
+  cropCycleId: string;
+  code: string;
+  contributionDate: string;
+  contributorCode: string;
+  contributorName: string;
+  contributorRole: CapitalContributorRole;
+  amount: number;
+  paymentMethod: CapitalContributionPaymentMethod;
+  referenceNumber: string | null;
+  notes: string | null;
+  status: CapitalContributionStatus;
+  isConfirmedCapital: boolean;
+  isInvestorCapital: boolean;
+  isPartnerCapital: boolean;
+  confirmedAt: string | null;
+  cancellationReason: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CreateCapitalContributionRequest = {
+  code: string;
+  contributionDate: string;
+  contributorCode: string;
+  contributorName: string;
+  contributorRole: CapitalContributorRole;
+  amount: number;
+  paymentMethod: CapitalContributionPaymentMethod;
+  referenceNumber: string | null;
+  notes: string | null;
+};
+
+export type UpdateCapitalContributionRequest = Omit<
+  CreateCapitalContributionRequest,
+  "code"
+>;
+
+export type CancelCapitalContributionRequest = {
+  cancellationReason: string;
+};
+
+export type CapitalContributionFilter = {
+  status?: CapitalContributionStatus;
+  contributorRole?: CapitalContributorRole;
+  contributionDateFrom?: string;
+  contributionDateTo?: string;
+  contributorCode?: string;
+  contributorName?: string;
+};
+
+export type ProfitabilityOutcome = 1 | 2 | 3;
+
 export type CropCycleProfitability = {
   organizationId: string;
   cropCycleId: string;
@@ -622,7 +681,7 @@ export type CropCycleProfitability = {
   totalCultivationCost: number;
   netProfit: number;
   profitMarginPercentage: number | null;
-  outcome: 1 | 2 | 3;
+  outcome: ProfitabilityOutcome;
   confirmedInvestorCapital: number;
   confirmedPartnerCapital: number;
   totalConfirmedCapital: number;
@@ -631,6 +690,89 @@ export type CropCycleProfitability = {
   availableHarvestQuantity: number;
   harvestQuantityUnit: HarvestQuantityUnit | null;
   generatedAt: string;
+};
+
+export type ProfitSharingSettlementStatus = 1 | 2 | 3;
+
+export type ProfitSharingAllocation = {
+  id: string;
+  organizationId: string;
+  profitSharingSettlementId: string;
+  contributorCodeSnapshot: string;
+  contributorNameSnapshot: string;
+  contributorRole: CapitalContributorRole;
+  confirmedCapital: number;
+  capitalRatio: number;
+  capitalRecovery: number;
+  capitalLoss: number;
+  managementProfitShare: number;
+  capitalProfitShare: number;
+  totalProfitShare: number;
+  totalPayout: number;
+  sequence: number;
+  createdAt: string;
+};
+
+export type ProfitSharingSettlement = {
+  id: string;
+  organizationId: string;
+  cropCycleId: string;
+  code: string;
+  settlementDate: string;
+  managingPartnerCode: string;
+  managingPartnerName: string;
+  recognizedRevenue: number;
+  collectedRevenue: number;
+  outstandingReceivable: number;
+  activityResourceCost: number;
+  manualExpenseCost: number;
+  totalCultivationCost: number;
+  netProfit: number;
+  outcome: ProfitabilityOutcome;
+  managementProfitPool: number;
+  capitalProfitPool: number;
+  totalInvestorCapital: number;
+  totalPartnerCapital: number;
+  totalCapital: number;
+  totalCapitalRecovery: number;
+  totalCapitalLoss: number;
+  totalInvestorProfitShare: number;
+  totalPartnerProfitShare: number;
+  totalPayout: number;
+  calculationVersion: string;
+  notes: string | null;
+  status: ProfitSharingSettlementStatus;
+  isActive: boolean;
+  finalizedAt: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  allocations: ProfitSharingAllocation[];
+};
+
+export type CreateProfitSharingSettlementRequest = {
+  code: string;
+  settlementDate: string;
+  managingPartnerCode: string;
+  managingPartnerName: string;
+  notes: string | null;
+};
+
+export type UpdateProfitSharingSettlementRequest = {
+  settlementDate: string;
+  notes: string | null;
+};
+
+export type VoidProfitSharingSettlementRequest = {
+  voidReason: string;
+};
+
+export type ProfitSharingSettlementFilter = {
+  status?: ProfitSharingSettlementStatus;
+  settlementDateFrom?: string;
+  settlementDateTo?: string;
+  managingPartnerCode?: string;
 };
 
 export type ApiProblem = {

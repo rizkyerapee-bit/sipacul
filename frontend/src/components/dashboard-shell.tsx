@@ -9,6 +9,7 @@ import { CultivationActivityManagement } from "@/components/cultivation-activity
 import { ExpenseManagement } from "@/components/expense-management";
 import { HarvestManagement } from "@/components/harvest-management";
 import { LandManagement } from "@/components/land-management";
+import { ProfitSharingManagement } from "@/components/profit-sharing-management";
 import { ReceivableManagement } from "@/components/receivable-management";
 import { SaleManagement } from "@/components/sale-management";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
@@ -66,7 +67,7 @@ const navigation: NavigationItem[] = [
   { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: "/harvest" },
   { label: "Penjualan", caption: "Transaksi hasil panen", permission: "sales.read", icon: "sales", path: "/sales" },
   { label: "Keuangan", caption: "Kas, piutang, dan biaya", permission: "finance.read", icon: "finance", path: "/finance" },
-  { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: null },
+  { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: "/profit-sharing" },
   { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team", path: null },
 ];
 
@@ -300,6 +301,8 @@ export function DashboardShell() {
               ? pathname.startsWith("/cultivation")
               : item.path === "/finance"
                 ? pathname.startsWith("/finance")
+                : item.path === "/profit-sharing"
+                  ? pathname.startsWith("/profit-sharing")
                 : item.path === pathname;
             const isAvailable = item.path !== null;
 
@@ -468,6 +471,13 @@ export function DashboardShell() {
             />
           ) : pathname === "/finance" ? (
             <ReceivableManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/profit-sharing" ? (
+            <ProfitSharingManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}
               organizationId={state.membership?.organizationId ?? null}

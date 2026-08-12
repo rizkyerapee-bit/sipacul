@@ -7,6 +7,7 @@ import type {
   BootstrapOwnerResponse,
   BootstrapStatus,
   AddLandPlotRequest,
+  CancelCapitalContributionRequest,
   CancelCropCycleRequest,
   CancelCultivationActivityRequest,
   CancelCultivationExpenseRequest,
@@ -18,6 +19,10 @@ import type {
   CompleteCultivationActivityRequest,
   CropCycle,
   CropCycleProfitability,
+  CapitalContribution,
+  CapitalContributionFilter,
+  CreateCapitalContributionRequest,
+  CreateProfitSharingSettlementRequest,
   CreateCultivationExpenseRequest,
   CreateCropCycleRequest,
   CreateCultivationActivityRequest,
@@ -35,6 +40,8 @@ import type {
   Land,
   LoginRequest,
   Organization,
+  ProfitSharingSettlement,
+  ProfitSharingSettlementFilter,
   Sale,
   SaleFilter,
   SalePayment,
@@ -46,6 +53,7 @@ import type {
   UpdateCultivationActivityPlanRequest,
   UpdateCultivationActivityResourceRequest,
   UpdateCultivationExpenseRequest,
+  UpdateCapitalContributionRequest,
   UpdateCropCyclePlanRequest,
   UpdateCropCycleNotesRequest,
   UpdateLandPlotRequest,
@@ -54,6 +62,8 @@ import type {
   UpdateSalePaymentRequest,
   UpdateSaleLineRequest,
   UpdateSaleRequest,
+  UpdateProfitSharingSettlementRequest,
+  VoidProfitSharingSettlementRequest,
 } from "@/lib/api/contracts";
 
 const API_PREFIX = "/api/v1";
@@ -958,5 +968,185 @@ export function getCropCycleProfitability(
       organizationId,
       `/crop-cycles/${encodeURIComponent(cropCycleId)}/profitability`,
     ),
+  );
+}
+
+function getCapitalContributionsPath(
+  organizationId: string,
+  cropCycleId: string,
+  suffix = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/capital-contributions${suffix}`,
+  );
+}
+
+export function getCapitalContributions(
+  organizationId: string,
+  cropCycleId: string,
+  filter: CapitalContributionFilter = {},
+): Promise<CapitalContribution[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.contributorRole !== undefined) {
+    search.set("contributorRole", String(filter.contributorRole));
+  }
+  if (filter.contributionDateFrom) {
+    search.set("contributionDateFrom", filter.contributionDateFrom);
+  }
+  if (filter.contributionDateTo) search.set("contributionDateTo", filter.contributionDateTo);
+  if (filter.contributorCode?.trim()) search.set("contributorCode", filter.contributorCode.trim());
+  if (filter.contributorName?.trim()) search.set("contributorName", filter.contributorName.trim());
+  const query = search.toString();
+
+  return apiRequest<CapitalContribution[]>(
+    `${getCapitalContributionsPath(organizationId, cropCycleId)}${query ? `?${query}` : ""}`,
+  );
+}
+
+export function createCapitalContribution(
+  organizationId: string,
+  cropCycleId: string,
+  request: CreateCapitalContributionRequest,
+): Promise<CapitalContribution> {
+  return csrfRequest<CapitalContribution>(
+    getCapitalContributionsPath(organizationId, cropCycleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCapitalContribution(
+  organizationId: string,
+  cropCycleId: string,
+  contributionId: string,
+  request: UpdateCapitalContributionRequest,
+): Promise<CapitalContribution> {
+  return csrfRequest<CapitalContribution>(
+    getCapitalContributionsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(contributionId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function confirmCapitalContribution(
+  organizationId: string,
+  cropCycleId: string,
+  contributionId: string,
+): Promise<CapitalContribution> {
+  return csrfRequest<CapitalContribution>(
+    getCapitalContributionsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(contributionId)}/confirm`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function cancelCapitalContribution(
+  organizationId: string,
+  cropCycleId: string,
+  contributionId: string,
+  request: CancelCapitalContributionRequest,
+): Promise<CapitalContribution> {
+  return csrfRequest<CapitalContribution>(
+    getCapitalContributionsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(contributionId)}/cancel`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+function getProfitSharingSettlementsPath(
+  organizationId: string,
+  cropCycleId: string,
+  suffix = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/profit-sharing-settlements${suffix}`,
+  );
+}
+
+export function getProfitSharingSettlements(
+  organizationId: string,
+  cropCycleId: string,
+  filter: ProfitSharingSettlementFilter = {},
+): Promise<ProfitSharingSettlement[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.settlementDateFrom) search.set("settlementDateFrom", filter.settlementDateFrom);
+  if (filter.settlementDateTo) search.set("settlementDateTo", filter.settlementDateTo);
+  if (filter.managingPartnerCode?.trim()) {
+    search.set("managingPartnerCode", filter.managingPartnerCode.trim());
+  }
+  const query = search.toString();
+
+  return apiRequest<ProfitSharingSettlement[]>(
+    `${getProfitSharingSettlementsPath(organizationId, cropCycleId)}${query ? `?${query}` : ""}`,
+  );
+}
+
+export function createProfitSharingSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  request: CreateProfitSharingSettlementRequest,
+): Promise<ProfitSharingSettlement> {
+  return csrfRequest<ProfitSharingSettlement>(
+    getProfitSharingSettlementsPath(organizationId, cropCycleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateProfitSharingSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  settlementId: string,
+  request: UpdateProfitSharingSettlementRequest,
+): Promise<ProfitSharingSettlement> {
+  return csrfRequest<ProfitSharingSettlement>(
+    getProfitSharingSettlementsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(settlementId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function finalizeProfitSharingSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  settlementId: string,
+): Promise<ProfitSharingSettlement> {
+  return csrfRequest<ProfitSharingSettlement>(
+    getProfitSharingSettlementsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(settlementId)}/finalize`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function voidProfitSharingSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  settlementId: string,
+  request: VoidProfitSharingSettlementRequest,
+): Promise<ProfitSharingSettlement> {
+  return csrfRequest<ProfitSharingSettlement>(
+    getProfitSharingSettlementsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(settlementId)}/void`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
   );
 }

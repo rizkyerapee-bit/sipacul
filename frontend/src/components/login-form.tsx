@@ -9,6 +9,7 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,15 +105,40 @@ export function LoginForm() {
 
             <label className="field">
               <span>Password</span>
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Masukkan password"
-                maxLength={1024}
-                required
-              />
+              <div className="password-control">
+                <input
+                  type={isPasswordVisible ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Masukkan password"
+                  maxLength={1024}
+                  required
+                />
+                <button
+                  className="password-control__toggle"
+                  type="button"
+                  aria-label={isPasswordVisible ? "Sembunyikan password" : "Tampilkan password"}
+                  aria-pressed={isPasswordVisible}
+                  title={isPasswordVisible ? "Sembunyikan password" : "Tampilkan password"}
+                  onClick={() => setIsPasswordVisible((visible) => !visible)}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    {isPasswordVisible ? (
+                      <>
+                        <path d="m3 3 18 18" />
+                        <path d="M10.6 10.7a2 2 0 0 0 2.7 2.7" />
+                        <path d="M9.9 4.2A10.8 10.8 0 0 1 12 4c5.2 0 9 4.8 9 8a8.7 8.7 0 0 1-2 4.2M6.6 6.6C4.3 8 3 10.2 3 12c0 3.2 3.8 8 9 8 1.3 0 2.5-.3 3.6-.8" />
+                      </>
+                    ) : (
+                      <>
+                        <path d="M3 12s3.4-6 9-6 9 6 9 6-3.4 6-9 6-9-6-9-6Z" />
+                        <circle cx="12" cy="12" r="2.5" />
+                      </>
+                    )}
+                  </svg>
+                </button>
+              </div>
             </label>
 
             <label className="check-row">
