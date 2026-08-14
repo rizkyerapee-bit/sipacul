@@ -6,6 +6,7 @@ using SiPacul.Application.Organizations.Members.Services;
 using SiPacul.Infrastructure.Identity;
 using SiPacul.Application.Finance.ProfitSharing.Persistence;
 using SiPacul.Application.Finance.ProfitSharing.Schemes.Persistence;
+using SiPacul.Application.Finance.ProfitSharing.Assignments.Persistence;
 using SiPacul.Application.Finance.Profitability.Persistence;
 using SiPacul.Application.Finance.SalePayments.Persistence;
 using SiPacul.Application.Finance.CapitalContributions.Persistence;
@@ -175,6 +176,10 @@ public static class DependencyInjection
         services.AddScoped<
             IProfitSharingSchemeActivationProcessor,
             ProfitSharingSchemeActivationProcessor>();
+
+        services.AddScoped<
+            IProfitSharingSchemeAssignmentRepository,
+            ProfitSharingSchemeAssignmentRepository>();
 
         services.AddScoped<
             IProfitSharingSettlementFinalizationProcessor,

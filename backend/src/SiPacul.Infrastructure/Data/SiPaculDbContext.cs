@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using SiPacul.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using SiPacul.Domain.Entities.Finance.ProfitSharing;
+using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Assignments;
 using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Schemes;
 using SiPacul.Domain.Entities.Finance;
 using SiPacul.Domain.Entities.Cultivation;
@@ -90,6 +91,22 @@ public sealed class SiPaculDbContext :
     public DbSet<ProfitSharingSchemeResidualShare>
         ProfitSharingSchemeResidualShares =>
         Set<ProfitSharingSchemeResidualShare>();
+
+    public DbSet<ProfitSharingSchemeAssignment>
+        ProfitSharingSchemeAssignments =>
+        Set<ProfitSharingSchemeAssignment>();
+
+    public DbSet<ProfitSharingSchemeAssignmentParticipant>
+        ProfitSharingSchemeAssignmentParticipants =>
+        Set<ProfitSharingSchemeAssignmentParticipant>();
+
+    public DbSet<ProfitSharingSchemeAssignmentPriorityRule>
+        ProfitSharingSchemeAssignmentPriorityRules =>
+        Set<ProfitSharingSchemeAssignmentPriorityRule>();
+
+    public DbSet<ProfitSharingSchemeAssignmentResidualShare>
+        ProfitSharingSchemeAssignmentResidualShares =>
+        Set<ProfitSharingSchemeAssignmentResidualShare>();
 
     public DbSet<Land> Lands =>
         Set<Land>();
