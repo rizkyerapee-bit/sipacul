@@ -1,4 +1,5 @@
 using SiPacul.Application.Finance.ProfitSharing.Services;
+using SiPacul.Application.Finance.ProfitSharing.Schemes.Services;
 using SiPacul.Application.Finance.Profitability.Services;
 using SiPacul.Application.Finance.SalePayments.Services;
 using SiPacul.Application.Finance.CapitalContributions.Services;
@@ -78,6 +79,10 @@ public static class DependencyInjection
         services.AddScoped<
             IProfitSharingSettlementService,
             ProfitSharingSettlementService>();
+
+        services.AddScoped<
+            IProfitSharingSchemeService,
+            ProfitSharingSchemeService>();
 
         return services;
     }

@@ -3,6 +3,7 @@ using SiPacul.Api.Endpoints.Authentication;
 using SiPacul.Api.Security;
 using SiPacul.Api.Common.Http;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing;
+using SiPacul.Api.Endpoints.Finance.ProfitSharing.Schemes;
 using SiPacul.Api.Endpoints.Finance.Profitability;
 using SiPacul.Api.Endpoints.Finance.SalePayments;
 using SiPacul.Api.Endpoints.Finance.CapitalContributions;
@@ -64,6 +65,7 @@ app.MapSalePaymentEndpoints();
 app.MapProfitabilityEndpoints();
 
 app.MapProfitSharingSettlementEndpoints();
+app.MapProfitSharingSchemeEndpoints();
 app.UseMiddleware<ProfitSharingSourceLockMiddleware>();
 
 app.Run();
