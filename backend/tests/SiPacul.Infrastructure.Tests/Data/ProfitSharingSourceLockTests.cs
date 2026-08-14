@@ -1,4 +1,8 @@
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using SiPacul.Domain.Entities.Cultivation;
+using SiPacul.Domain.Entities.Finance.ProfitSharing;
+using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Settlements;
 using SiPacul.Infrastructure.Data;
 using Xunit;
 
@@ -95,5 +99,49 @@ public sealed class ProfitSharingSourceLockTests
                     nameof(
                         SiPaculDbContext.SaveChangesAsync) &&
                 method.GetParameters().Length == 2);
+    }
+
+    [Fact]
+    public void DbContext_ShouldExposeLegacyAndWaterfallSettlements()
+    {
+        var properties = typeof(SiPaculDbContext)
+            .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+            .ToDictionary(property => property.Name, property => property);
+
+        Assert.Equal(
+            typeof(DbSet<ProfitSharingSettlement>),
+            properties[nameof(SiPaculDbContext.ProfitSharingSettlements)]
+                .PropertyType);
+        Assert.Equal(
+            typeof(DbSet<ProfitSharingWaterfallSettlement>),
+            properties[
+                nameof(
+                    SiPaculDbContext.ProfitSharingWaterfallSettlements)]
+                .PropertyType);
+    }
+
+    [Fact]
+    public void DbContext_ShouldDeclareSharedCropCycleRowLock()
+    {
+        var method = typeof(SiPaculDbContext)
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Single(candidate =>
+                candidate.Name ==
+                    nameof(
+                        SiPaculDbContext
+                            .LockCropCycleForProfitSharingAsync));
+
+        Assert.Equal(
+            typeof(Task<CropCycle?>),
+            method.ReturnType);
+        Assert.Equal(
+            new[]
+            {
+                typeof(Guid),
+                typeof(Guid),
+                typeof(CancellationToken)
+            },
+            method.GetParameters()
+                .Select(parameter => parameter.ParameterType));
     }
 }

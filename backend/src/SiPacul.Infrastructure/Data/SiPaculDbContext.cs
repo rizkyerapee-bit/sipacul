@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using SiPacul.Domain.Entities.Finance.ProfitSharing;
 using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Assignments;
 using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Schemes;
+using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Settlements;
 using SiPacul.Domain.Entities.Finance;
 using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Harvests;
@@ -108,6 +109,22 @@ public sealed class SiPaculDbContext :
         ProfitSharingSchemeAssignmentResidualShares =>
         Set<ProfitSharingSchemeAssignmentResidualShare>();
 
+    public DbSet<ProfitSharingWaterfallSettlement>
+        ProfitSharingWaterfallSettlements =>
+        Set<ProfitSharingWaterfallSettlement>();
+
+    public DbSet<ProfitSharingWaterfallPriorityAllocation>
+        ProfitSharingWaterfallPriorityAllocations =>
+        Set<ProfitSharingWaterfallPriorityAllocation>();
+
+    public DbSet<ProfitSharingWaterfallParticipantAllocation>
+        ProfitSharingWaterfallParticipantAllocations =>
+        Set<ProfitSharingWaterfallParticipantAllocation>();
+
+    public DbSet<ProfitSharingWaterfallResidualShareSnapshot>
+        ProfitSharingWaterfallResidualShares =>
+        Set<ProfitSharingWaterfallResidualShareSnapshot>();
+
     public DbSet<Land> Lands =>
         Set<Land>();
 
@@ -148,6 +165,25 @@ public sealed class SiPaculDbContext :
         return await base.SaveChangesAsync(
             acceptAllChangesOnSuccess,
             cancellationToken);
+    }
+
+    public async Task<CropCycle?>
+        LockCropCycleForProfitSharingAsync(
+            Guid organizationId,
+            Guid cropCycleId,
+            CancellationToken cancellationToken = default)
+    {
+        var cycles = await Set<CropCycle>()
+            .FromSqlInterpolated(
+                $@"SELECT * FROM ""CropCycles""
+                    WHERE ""OrganizationId"" = {organizationId}
+                      AND ""Id"" = {cropCycleId}
+                      AND ""IsDeleted"" = FALSE
+                    FOR UPDATE")
+            .AsTracking()
+            .ToListAsync(cancellationToken);
+
+        return cycles.SingleOrDefault();
     }
 
     private void EnsureProfitSharingSourcesAreUnlocked()
@@ -323,7 +359,34 @@ public sealed class SiPaculDbContext :
 
         if (settlement is null)
         {
-            return;
+            var waterfallSettlement =
+                Set<ProfitSharingWaterfallSettlement>()
+                    .AsNoTracking()
+                    .Where(candidate =>
+                        candidate.OrganizationId == organizationId &&
+                        candidate.CropCycleId == cropCycleId &&
+                        candidate.Status ==
+                            ProfitSharingWaterfallSettlementStatus.Finalized &&
+                        !candidate.IsDeleted)
+                    .Select(candidate =>
+                        new
+                        {
+                            candidate.Id,
+                            candidate.CropCycleId
+                        })
+                    .FirstOrDefault();
+
+            if (waterfallSettlement is null)
+            {
+                return;
+            }
+
+            throw new ProfitSharingSourceLockedException(
+                errorCode,
+                sourceType,
+                organizationId,
+                waterfallSettlement.CropCycleId,
+                waterfallSettlement.Id);
         }
 
         throw new ProfitSharingSourceLockedException(
@@ -362,7 +425,34 @@ public sealed class SiPaculDbContext :
 
         if (settlement is null)
         {
-            return;
+            var waterfallSettlement =
+                await Set<ProfitSharingWaterfallSettlement>()
+                    .AsNoTracking()
+                    .Where(candidate =>
+                        candidate.OrganizationId == organizationId &&
+                        candidate.CropCycleId == cropCycleId &&
+                        candidate.Status ==
+                            ProfitSharingWaterfallSettlementStatus.Finalized &&
+                        !candidate.IsDeleted)
+                    .Select(candidate =>
+                        new
+                        {
+                            candidate.Id,
+                            candidate.CropCycleId
+                        })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+            if (waterfallSettlement is null)
+            {
+                return;
+            }
+
+            throw new ProfitSharingSourceLockedException(
+                errorCode,
+                sourceType,
+                organizationId,
+                waterfallSettlement.CropCycleId,
+                waterfallSettlement.Id);
         }
 
         throw new ProfitSharingSourceLockedException(

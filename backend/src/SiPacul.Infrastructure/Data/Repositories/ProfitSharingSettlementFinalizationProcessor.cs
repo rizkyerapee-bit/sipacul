@@ -9,6 +9,7 @@ using SiPacul.Domain.Entities.Cultivation;
 using SiPacul.Domain.Entities.Finance;
 using SiPacul.Domain.Entities.Finance.Profitability;
 using SiPacul.Domain.Entities.Finance.ProfitSharing;
+using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Settlements;
 using SiPacul.Domain.Entities.Harvests;
 using SiPacul.Domain.Entities.Sales;
 
@@ -159,28 +160,39 @@ public sealed class
                     .ActiveSettlementExists);
         }
 
-        var cropCycleStatus =
-            await _dbContext
-                .Set<CropCycle>()
-                .AsNoTracking()
-                .Where(cropCycle =>
-                    cropCycle.OrganizationId ==
-                        organizationId &&
-                    cropCycle.Id ==
-                        cropCycleId &&
-                    !cropCycle.IsDeleted)
-                .Select(cropCycle =>
-                    (CropCycleStatus?)cropCycle.Status)
-                .SingleOrDefaultAsync(
-                    cancellationToken);
+        var cropCycle = await _dbContext
+            .LockCropCycleForProfitSharingAsync(
+                organizationId,
+                cropCycleId,
+                cancellationToken);
 
-        if (cropCycleStatus is not
+        if (cropCycle?.Status is not
                 CropCycleStatus.Completed and
             not CropCycleStatus.Cancelled)
         {
             return ProfitSharingFinalizationResult.Failed(
                 ProfitSharingFinalizationFailure
                     .CropCycleNotTerminal);
+        }
+
+        var activeWaterfallSettlementExists =
+            await _dbContext
+                .Set<ProfitSharingWaterfallSettlement>()
+                .AsNoTracking()
+                .AnyAsync(
+                    candidate =>
+                        candidate.OrganizationId == organizationId &&
+                        candidate.CropCycleId == cropCycleId &&
+                        candidate.Status ==
+                            ProfitSharingWaterfallSettlementStatus.Finalized &&
+                        !candidate.IsDeleted,
+                    cancellationToken);
+
+        if (activeWaterfallSettlementExists)
+        {
+            return ProfitSharingFinalizationResult.Failed(
+                ProfitSharingFinalizationFailure
+                    .ActiveSettlementExists);
         }
 
         var activeActivityExists =
