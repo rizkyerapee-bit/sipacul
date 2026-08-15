@@ -1,0 +1,38 @@
+using SiPacul.Domain.Entities.Cultivation;
+
+namespace SiPacul.Domain.Entities.Evaluations;
+
+public sealed record SeasonEvaluationInput(
+    Guid OrganizationId,
+    Guid CropCycleId,
+    string CropCycleCode,
+    string CropCycleName,
+    Guid LandId,
+    string LandCode,
+    string LandName,
+    Guid LandPlotId,
+    string LandPlotCode,
+    string LandPlotName,
+    Guid CommodityId,
+    string CommodityCode,
+    string CommodityName,
+    CropCycleStatus CropCycleStatus,
+    DateOnly PlannedStartDate,
+    DateOnly ExpectedHarvestDate,
+    DateOnly? ActualStartDate,
+    DateOnly? ActualHarvestDate,
+    int TotalActivityCount,
+    int CompletedActivityCount,
+    int CancelledActivityCount,
+    int PendingActivityCount,
+    int IssueActivityCount,
+    int SopLinkedActivityCount,
+    int SopCompliantActivityCount,
+    int SopDeviatedActivityCount,
+    int SopNotEvaluatedActivityCount,
+    int ConfirmedHarvestBatchCount,
+    decimal RecognizedRevenue,
+    decimal CollectedRevenue,
+    decimal TotalCultivationCost,
+    decimal CapitalFundingGap,
+    DateTime GeneratedAt);
