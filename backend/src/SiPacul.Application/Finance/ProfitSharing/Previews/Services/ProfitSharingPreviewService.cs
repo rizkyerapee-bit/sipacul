@@ -1,14 +1,11 @@
 using SiPacul.Application.Finance.CapitalContributions.Persistence;
 using SiPacul.Application.Finance.ProfitSharing.Assignments.Persistence;
-using SiPacul.Application.Finance.ProfitSharing.Previews;
+using SiPacul.Application.Finance.ProfitSharing.Calculations;
 using SiPacul.Application.Finance.ProfitSharing.Previews.Contracts;
 using SiPacul.Application.Finance.ProfitSharing.Previews.Mappings;
 using SiPacul.Application.Finance.Profitability.Persistence;
 using SiPacul.Application.Organizations.Persistence;
 using SiPacul.Domain.Entities.Finance;
-using SiPacul.Domain.Entities.Finance.ProfitSharing.V2;
-using SiPacul.Domain.Entities.Finance.ProfitSharing.V2.Assignments;
-using SiPacul.Domain.Entities.Finance.Profitability;
 using SiPacul.Shared.Results;
 
 namespace SiPacul.Application.Finance.ProfitSharing.Previews.Services;
@@ -105,232 +102,52 @@ public sealed class ProfitSharingPreviewService :
                 status: CapitalContributionStatus.Confirmed,
                 cancellationToken: cancellationToken);
 
-        try
-        {
-            var profitability =
-                CropCycleProfitabilityReport.Calculate(
-                    sourceSnapshot.ToInput(
-                        _timeProvider.GetUtcNow().UtcDateTime));
-
-            var inputResult = BuildWaterfallInput(
+        var sourceCalculation =
+            ProfitSharingWaterfallSourceCalculator.Calculate(
                 assignment,
+                sourceSnapshot,
                 contributions,
-                profitability);
+                _timeProvider.GetUtcNow().UtcDateTime);
 
-            if (inputResult.IsFailure)
-            {
-                return Failure(inputResult.Error);
-            }
+        if (!sourceCalculation.IsSuccess)
+        {
+            return Failure(MapFailure(sourceCalculation));
+        }
 
-            var calculation =
-                ProfitSharingWaterfallCalculator.Calculate(
-                    profitability,
-                    inputResult.Value);
-
-            return Result<ProfitSharingPreviewResponse>.Success(
-                calculation.ToPreviewResponse(
-                    assignment,
-                    profitability,
-                    sourceSnapshot.HarvestQuantityUnit));
-        }
-        catch (ArgumentException exception)
-        {
-            return Failure(
-                ProfitSharingPreviewErrors.CalculationUnavailable(
-                    exception.Message));
-        }
-        catch (InvalidOperationException exception)
-        {
-            return Failure(
-                ProfitSharingPreviewErrors.CalculationUnavailable(
-                    exception.Message));
-        }
-        catch (OverflowException exception)
-        {
-            return Failure(
-                ProfitSharingPreviewErrors.CalculationUnavailable(
-                    exception.Message));
-        }
+        return Result<ProfitSharingPreviewResponse>.Success(
+            sourceCalculation.Calculation!.ToPreviewResponse(
+                assignment,
+                sourceCalculation.Profitability!,
+                sourceSnapshot.HarvestQuantityUnit));
     }
 
-    private static Result<ProfitSharingWaterfallSchemeInput>
-        BuildWaterfallInput(
-            ProfitSharingSchemeAssignment assignment,
-            IReadOnlyCollection<CapitalContribution> contributions,
-            CropCycleProfitabilityReport profitability)
+    private static Error MapFailure(
+        ProfitSharingWaterfallSourceCalculation result)
     {
-        var participantByCode = assignment.Participants.ToDictionary(
-            participant => participant.ParticipantCode,
-            StringComparer.Ordinal);
-
-        var capitalByParticipant = assignment.Participants.ToDictionary(
-            participant => participant.ParticipantCode,
-            _ => 0m,
-            StringComparer.Ordinal);
-
-        var groupedContributions = contributions
-            .GroupBy(
-                contribution => contribution.ContributorCode,
-                StringComparer.Ordinal)
-            .ToArray();
-
-        foreach (var group in groupedContributions)
+        return result.Failure switch
         {
-            if (!participantByCode.TryGetValue(
-                    group.Key,
-                    out var participant))
-            {
-                return Result<ProfitSharingWaterfallSchemeInput>.Failure(
-                    ProfitSharingPreviewErrors.CapitalNotInScheme(
-                        group.Key));
-            }
+            ProfitSharingWaterfallSourceFailure
+                .CapitalIdentityConflict =>
+                ProfitSharingPreviewErrors.CapitalIdentityConflict(
+                    result.ContributorCode ?? string.Empty),
 
-            if (group.Select(contribution => contribution.ContributorRole)
-                    .Distinct()
-                    .Count() != 1 ||
-                group.Select(contribution => contribution.ContributorName)
-                    .Distinct(StringComparer.Ordinal)
-                    .Count() != 1)
-            {
-                return Result<ProfitSharingWaterfallSchemeInput>.Failure(
-                    ProfitSharingPreviewErrors.CapitalIdentityConflict(
-                        group.Key));
-            }
+            ProfitSharingWaterfallSourceFailure
+                .CapitalNotInScheme =>
+                ProfitSharingPreviewErrors.CapitalNotInScheme(
+                    result.ContributorCode ?? string.Empty),
 
-            var contributorRole = group.First().ContributorRole;
+            ProfitSharingWaterfallSourceFailure
+                .CapitalRoleMismatch =>
+                ProfitSharingPreviewErrors.CapitalRoleMismatch(
+                    result.ContributorCode ?? string.Empty),
 
-            if (!IsCompatibleRole(
-                    participant.ParticipantRole,
-                    contributorRole))
-            {
-                return Result<ProfitSharingWaterfallSchemeInput>.Failure(
-                    ProfitSharingPreviewErrors.CapitalRoleMismatch(
-                        group.Key));
-            }
+            ProfitSharingWaterfallSourceFailure
+                .SourceDataChanged =>
+                ProfitSharingPreviewErrors.SourceDataChanged(),
 
-            capitalByParticipant[group.Key] = Math.Round(
-                group.Sum(contribution => contribution.Amount),
-                2,
-                MidpointRounding.AwayFromZero);
-        }
-
-        var detailedCapital = Math.Round(
-            capitalByParticipant.Values.Sum(),
-            2,
-            MidpointRounding.AwayFromZero);
-
-        var detailedInvestorCapital = Math.Round(
-            contributions
-                .Where(contribution =>
-                    contribution.ContributorRole ==
-                        CapitalContributorRole.Investor)
-                .Sum(contribution => contribution.Amount),
-            2,
-            MidpointRounding.AwayFromZero);
-
-        var detailedPartnerCapital = Math.Round(
-            contributions
-                .Where(contribution =>
-                    contribution.ContributorRole ==
-                        CapitalContributorRole.Partner)
-                .Sum(contribution => contribution.Amount),
-            2,
-            MidpointRounding.AwayFromZero);
-
-        if (detailedCapital != profitability.TotalConfirmedCapital ||
-            detailedInvestorCapital !=
-                profitability.ConfirmedInvestorCapital ||
-            detailedPartnerCapital !=
-                profitability.ConfirmedPartnerCapital)
-        {
-            return Result<ProfitSharingWaterfallSchemeInput>.Failure(
-                ProfitSharingPreviewErrors.SourceDataChanged());
-        }
-
-        var participants = assignment.Participants
-            .OrderBy(participant => participant.Sequence)
-            .Select(participant =>
-                new ProfitSharingWaterfallParticipantInput(
-                    participant.ParticipantCode,
-                    participant.ParticipantName,
-                    participant.ParticipantRole,
-                    capitalByParticipant[participant.ParticipantCode],
-                    participant.ParticipatesInResidualProfit,
-                    participant.Sequence))
-            .ToArray();
-
-        var priorityRules = assignment.PriorityRules
-            .OrderBy(rule => rule.Sequence)
-            .Select(rule =>
-                new ProfitSharingPriorityRuleInput(
-                    rule.RuleCode,
-                    rule.RuleType,
-                    rule.RecipientCode,
-                    ProfitSharingRate.FromFraction(
-                        rule.RateNumerator,
-                        rule.RateDenominator),
-                    rule.Sequence))
-            .ToArray();
-
-        var residualPolicy = BuildResidualPolicy(assignment);
-
-        return Result<ProfitSharingWaterfallSchemeInput>.Success(
-            new ProfitSharingWaterfallSchemeInput(
-                participants,
-                priorityRules,
-                residualPolicy));
-    }
-
-    private static ProfitSharingResidualPolicyInput BuildResidualPolicy(
-        ProfitSharingSchemeAssignment assignment)
-    {
-        return assignment.ResidualMethod switch
-        {
-            ProfitSharingResidualMethod.RemainderToParticipant =>
-                ProfitSharingResidualPolicyInput
-                    .RemainderToParticipant(
-                        assignment.ResidualRecipientCode ??
-                        throw new InvalidOperationException(
-                            "Residual recipient is missing from the assigned scheme.")),
-
-            ProfitSharingResidualMethod.ProRataCapital =>
-                ProfitSharingResidualPolicyInput.ProRataCapital(),
-
-            ProfitSharingResidualMethod.FixedPercentage =>
-                ProfitSharingResidualPolicyInput.FixedPercentage(
-                    assignment.ResidualShares
-                        .OrderBy(share => share.Sequence)
-                        .Select(share =>
-                            new ProfitSharingResidualShareInput(
-                                share.RecipientCode,
-                                ProfitSharingRate.FromFraction(
-                                    share.RateNumerator,
-                                    share.RateDenominator),
-                                share.Sequence))
-                        .ToArray()),
-
-            _ => throw new InvalidOperationException(
-                "Residual method is unsupported.")
-        };
-    }
-
-    private static bool IsCompatibleRole(
-        ProfitSharingParticipantRole participantRole,
-        CapitalContributorRole contributorRole)
-    {
-        return participantRole switch
-        {
-            ProfitSharingParticipantRole.Company =>
-                contributorRole == CapitalContributorRole.Investor,
-
-            ProfitSharingParticipantRole.PassiveInvestor =>
-                contributorRole == CapitalContributorRole.Investor,
-
-            ProfitSharingParticipantRole.ManagingPartner =>
-                contributorRole == CapitalContributorRole.Partner,
-
-            ProfitSharingParticipantRole.Other => true,
-            _ => false
+            _ => ProfitSharingPreviewErrors.CalculationUnavailable(
+                result.Message ??
+                "The source data is not valid for this scheme.")
         };
     }
 

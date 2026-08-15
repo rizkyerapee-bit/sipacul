@@ -6,6 +6,7 @@ using SiPacul.Api.Endpoints.Finance.ProfitSharing;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing.Assignments;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing.Previews;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing.Schemes;
+using SiPacul.Api.Endpoints.Finance.ProfitSharing.WaterfallSettlements;
 using SiPacul.Api.Endpoints.Finance.Profitability;
 using SiPacul.Api.Endpoints.Finance.SalePayments;
 using SiPacul.Api.Endpoints.Finance.CapitalContributions;
@@ -70,6 +71,7 @@ app.MapProfitSharingSettlementEndpoints();
 app.MapProfitSharingSchemeEndpoints();
 app.MapProfitSharingSchemeAssignmentEndpoints();
 app.MapProfitSharingPreviewEndpoints();
+app.MapProfitSharingWaterfallSettlementEndpoints();
 app.UseMiddleware<ProfitSharingSourceLockMiddleware>();
 
 app.Run();

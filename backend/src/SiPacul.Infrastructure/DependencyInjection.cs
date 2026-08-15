@@ -187,6 +187,10 @@ public static class DependencyInjection
             ProfitSharingWaterfallSettlementRepository>();
 
         services.AddScoped<
+            IProfitSharingWaterfallSettlementOperationProcessor,
+            ProfitSharingWaterfallSettlementOperationProcessor>();
+
+        services.AddScoped<
             IProfitSharingSettlementFinalizationProcessor,
             ProfitSharingSettlementFinalizationProcessor>();
 
