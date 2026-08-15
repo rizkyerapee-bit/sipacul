@@ -7,6 +7,7 @@ import type {
   ProfitSharingScheme,
   ProfitSharingSchemeStatus,
   ProfitSharingPreview,
+  ProfitSharingWaterfallSettlement,
   ProfitSharingWaterfallSettlementStatus,
   UpdateProfitSharingSchemeDraftRequest,
 } from "@/lib/api/contracts";
@@ -38,6 +39,29 @@ export type ProfitSharingPreviewSummary = {
   unallocatedPriorityAmount: number;
   hasCapitalLoss: boolean;
   isPayoutReconciled: boolean;
+};
+
+export type ProfitSharingWaterfallSettlementStatusFilter =
+  | ProfitSharingWaterfallSettlementStatus
+  | "all";
+
+export type ProfitSharingWaterfallSettlementDraft = {
+  code: string;
+  settlementDate: string;
+  notes: string;
+};
+
+export type ProfitSharingWaterfallSettlementSummary = {
+  total: number;
+  finalized: number;
+  voided: number;
+  active: ProfitSharingWaterfallSettlement | null;
+  latest: ProfitSharingWaterfallSettlement | null;
+};
+
+export type ProfitSharingWaterfallFinalizationAvailability = {
+  allowed: boolean;
+  reason: string;
 };
 
 export type ProfitSharingSchemeParticipantDraft = {
@@ -206,6 +230,107 @@ export function summarizeProfitSharingPreview(
     hasCapitalLoss: preview.totals.totalCapitalLoss > 0,
     isPayoutReconciled: Math.abs(preview.totals.totalPayout - expectedPayout) < 0.01,
   };
+}
+
+export function summarizeProfitSharingWaterfallSettlements(
+  settlements: ProfitSharingWaterfallSettlement[],
+): ProfitSharingWaterfallSettlementSummary {
+  const ordered = settlements.toSorted((left, right) =>
+    right.finalizedAt.localeCompare(left.finalizedAt));
+
+  return {
+    total: settlements.length,
+    finalized: settlements.filter((settlement) => settlement.status === 1).length,
+    voided: settlements.filter((settlement) => settlement.status === 2).length,
+    active: ordered.find((settlement) => settlement.status === 1) ?? null,
+    latest: ordered[0] ?? null,
+  };
+}
+
+export function filterProfitSharingWaterfallSettlements(
+  settlements: ProfitSharingWaterfallSettlement[],
+  query: string,
+  status: ProfitSharingWaterfallSettlementStatusFilter,
+): ProfitSharingWaterfallSettlement[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
+
+  return settlements
+    .filter((settlement) => status === "all" || settlement.status === status)
+    .filter((settlement) => !normalizedQuery || [
+      settlement.code,
+      settlement.schemeCodeSnapshot,
+      settlement.schemeNameSnapshot,
+      settlement.cropCycleCodeSnapshot,
+    ].some((value) => value.toLocaleLowerCase("id-ID").includes(normalizedQuery)))
+    .toSorted((left, right) => right.finalizedAt.localeCompare(left.finalizedAt));
+}
+
+export function profitSharingWaterfallFinalizationAvailability(
+  cropCycleStatus: CropCycleStatus,
+  settlements: ProfitSharingWaterfallSettlement[],
+  hasPreview: boolean,
+): ProfitSharingWaterfallFinalizationAvailability {
+  if (settlements.some((settlement) => settlement.status === 1)) {
+    return {
+      allowed: false,
+      reason: "Siklus sudah memiliki settlement final aktif.",
+    };
+  }
+
+  if (cropCycleStatus !== 3 && cropCycleStatus !== 4) {
+    return {
+      allowed: false,
+      reason: "Selesaikan atau batalkan siklus sebelum finalisasi.",
+    };
+  }
+
+  if (!hasPreview) {
+    return {
+      allowed: false,
+      reason: "Preview valid diperlukan sebelum snapshot difinalkan.",
+    };
+  }
+
+  return {
+    allowed: true,
+    reason: "Preview siap dikunci sebagai snapshot final immutable.",
+  };
+}
+
+export function createProfitSharingWaterfallSettlementDraft(
+  cropCycleCode: string,
+  settlementDate: string,
+): ProfitSharingWaterfallSettlementDraft {
+  const compactDate = settlementDate.replaceAll("-", "");
+  const normalizedCycleCode = cropCycleCode
+    .trim()
+    .toUpperCase()
+    .replaceAll(/[^A-Z0-9._-]/g, "-");
+
+  return {
+    code: `PSV2-${normalizedCycleCode}-${compactDate}`.slice(0, 40),
+    settlementDate,
+    notes: "",
+  };
+}
+
+export function validateProfitSharingWaterfallSettlementDraft(
+  draft: ProfitSharingWaterfallSettlementDraft,
+): string[] {
+  const errors: string[] = [];
+  const code = draft.code.trim().toUpperCase();
+
+  if (!codePattern.test(code)) {
+    errors.push("Kode settlement wajib memakai format kode maksimal 40 karakter.");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.settlementDate)) {
+    errors.push("Tanggal settlement wajib diisi.");
+  }
+  if (draft.notes.trim().length > 1000) {
+    errors.push("Catatan settlement maksimal 1.000 karakter.");
+  }
+
+  return errors;
 }
 
 const codePattern = /^[A-Z0-9][A-Z0-9._-]{0,39}$/;

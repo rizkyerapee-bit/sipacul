@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import type {
   ProfitSharingScheme,
   ProfitSharingSchemeResidualShareRequest,
+  ProfitSharingWaterfallSettlement,
 } from "@/lib/api/contracts";
 import {
   buildCreateProfitSharingSchemeRequest,
   buildUpdateProfitSharingSchemeRequest,
+  createProfitSharingWaterfallSettlementDraft,
   createProfitSharingSchemeDraft,
+  filterProfitSharingWaterfallSettlements,
   filterProfitSharingSchemes,
   formatProfitSharingRate,
   moveProfitSharingSchemeItem,
@@ -15,11 +18,14 @@ import {
   profitSharingResidualMethodLabels,
   profitSharingSchemeDraftFrom,
   profitSharingAssignmentAvailability,
+  profitSharingWaterfallFinalizationAvailability,
   profitSharingSchemeStatusLabels,
   profitSharingSchemeUsesPassiveInvestor,
   profitSharingWaterfallStatusLabels,
   summarizeProfitSharingSchemes,
   summarizeProfitSharingPreview,
+  summarizeProfitSharingWaterfallSettlements,
+  validateProfitSharingWaterfallSettlementDraft,
   validateProfitSharingSchemeDraft,
 } from "@/lib/finance/profit-sharing-v2-management";
 
@@ -76,6 +82,22 @@ function schemeFixture(): ProfitSharingScheme {
     ],
     residualShares: [],
   };
+}
+
+function settlementFixture(
+  id: string,
+  status: 1 | 2,
+  finalizedAt: string,
+): ProfitSharingWaterfallSettlement {
+  return {
+    id,
+    status,
+    finalizedAt,
+    code: `PSV2-${id}`,
+    schemeCodeSnapshot: "MITRA-1",
+    schemeNameSnapshot: "Skema Mitra",
+    cropCycleCodeSnapshot: "SB-CABAI",
+  } as ProfitSharingWaterfallSettlement;
 }
 
 describe("profit-sharing V2 management", () => {
@@ -390,5 +412,66 @@ describe("profit-sharing V2 management", () => {
       hasCapitalLoss: false,
       isPayoutReconciled: true,
     });
+  });
+
+  it("summarizes active and historical waterfall settlements", () => {
+    const voided = settlementFixture("lama", 2, "2026-08-14T08:00:00Z");
+    const active = settlementFixture("baru", 1, "2026-08-15T08:00:00Z");
+
+    expect(summarizeProfitSharingWaterfallSettlements([voided, active]))
+      .toMatchObject({
+        total: 2,
+        finalized: 1,
+        voided: 1,
+        active,
+        latest: active,
+      });
+  });
+
+  it("filters waterfall history by status and snapshot identity", () => {
+    const voided = settlementFixture("lama", 2, "2026-08-14T08:00:00Z");
+    const active = settlementFixture("baru", 1, "2026-08-15T08:00:00Z");
+
+    expect(filterProfitSharingWaterfallSettlements([voided, active], "mitra", 1))
+      .toEqual([active]);
+    expect(filterProfitSharingWaterfallSettlements([voided, active], "tidak ada", "all"))
+      .toEqual([]);
+  });
+
+  it("only allows waterfall finalization for a terminal cycle with a preview", () => {
+    expect(profitSharingWaterfallFinalizationAvailability(2, [], true).allowed)
+      .toBe(false);
+    expect(profitSharingWaterfallFinalizationAvailability(3, [], false).allowed)
+      .toBe(false);
+    expect(profitSharingWaterfallFinalizationAvailability(3, [], true))
+      .toMatchObject({ allowed: true });
+  });
+
+  it("blocks a second active waterfall settlement", () => {
+    const active = settlementFixture("aktif", 1, "2026-08-15T08:00:00Z");
+
+    expect(profitSharingWaterfallFinalizationAvailability(3, [active], true))
+      .toMatchObject({
+        allowed: false,
+        reason: "Siklus sudah memiliki settlement final aktif.",
+      });
+  });
+
+  it("builds and validates a normalized waterfall finalization draft", () => {
+    const draft = createProfitSharingWaterfallSettlementDraft(
+      "sb cabai/utama",
+      "2026-08-15",
+    );
+
+    expect(draft).toEqual({
+      code: "PSV2-SB-CABAI-UTAMA-20260815",
+      settlementDate: "2026-08-15",
+      notes: "",
+    });
+    expect(validateProfitSharingWaterfallSettlementDraft(draft)).toEqual([]);
+
+    draft.code = "kode tidak valid";
+    draft.settlementDate = "";
+    expect(validateProfitSharingWaterfallSettlementDraft(draft)).toHaveLength(2);
   });
 });

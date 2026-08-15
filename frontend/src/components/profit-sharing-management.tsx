@@ -56,6 +56,7 @@ import {
 } from "@/lib/finance/profit-sharing-management";
 import { ProfitSharingSchemeManagement } from "./profit-sharing-scheme-management";
 import { ProfitSharingWaterfallPreview } from "./profit-sharing-waterfall-preview";
+import { ProfitSharingWaterfallSettlementManagement } from "./profit-sharing-waterfall-settlement-management";
 import styles from "./receivable-management.module.css";
 
 type Props = {
@@ -64,7 +65,7 @@ type Props = {
   permissions: string[];
 };
 
-type View = "overview" | "capital" | "settlements" | "schemes" | "waterfall";
+type View = "overview" | "capital" | "settlements" | "schemes" | "waterfall" | "waterfall-settlements";
 type CapitalEditorState = { contributionId: string | null };
 type SettlementEditorState = { settlementId: string | null };
 type ActionState =
@@ -654,7 +655,7 @@ export function ProfitSharingManagement({ organization, organizationId, permissi
         </div>
         <div className={styles.heroActions}>
           {(!canWriteFinance || !canWriteSharing) && <span className={styles.readOnlyBadge}>Sebagian mode baca</span>}
-          {view !== "schemes" && view !== "waterfall" && <button className={styles.secondaryButton} type="button" disabled={!selectedCycleId || isRefreshing} onClick={() => selectedCycleId && void loadCycleData(organizationId, selectedCycleId, true)}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>}
+          {view !== "schemes" && view !== "waterfall" && view !== "waterfall-settlements" && <button className={styles.secondaryButton} type="button" disabled={!selectedCycleId || isRefreshing} onClick={() => selectedCycleId && void loadCycleData(organizationId, selectedCycleId, true)}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>}
         </div>
       </header>
 
@@ -671,11 +672,12 @@ export function ProfitSharingManagement({ organization, organizationId, permissi
           {canReadFinance && <button aria-selected={view === "capital"} className={view === "capital" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("capital")}>Modal</button>}
           {canReadSharing && <button aria-selected={view === "schemes"} className={view === "schemes" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("schemes")}>Skema V2</button>}
           {canReadSharing && <button aria-selected={view === "waterfall"} className={view === "waterfall" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("waterfall")}>Preview V2</button>}
+          {canReadSharing && <button aria-selected={view === "waterfall-settlements"} className={view === "waterfall-settlements" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("waterfall-settlements")}>Finalisasi V2</button>}
           {canReadSharing && <button aria-selected={view === "settlements"} className={view === "settlements" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("settlements")}>Pembagian hasil</button>}
         </div>
       </div>
 
-      {pageError && view !== "schemes" && view !== "waterfall" && <div className={styles.pageError} role="alert">{pageError}</div>}
+      {pageError && view !== "schemes" && view !== "waterfall" && view !== "waterfall-settlements" && <div className={styles.pageError} role="alert">{pageError}</div>}
       {view === "schemes" ? (
         <ProfitSharingSchemeManagement
           organizationId={organizationId}
@@ -691,6 +693,13 @@ export function ProfitSharingManagement({ organization, organizationId, permissi
           organizationId={organizationId}
           cycle={selectedCycle}
           canWrite={canWriteSharing}
+        />
+      ) : view === "waterfall-settlements" ? (
+        <ProfitSharingWaterfallSettlementManagement
+          organizationId={organizationId}
+          cycle={selectedCycle}
+          canFinalize={canFinalize}
+          canVoid={canVoid}
         />
       ) : view === "overview" ? (
         <>
