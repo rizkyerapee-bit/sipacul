@@ -21,7 +21,9 @@ import type {
   CropCycleProfitability,
   CapitalContribution,
   CapitalContributionFilter,
+  AssignProfitSharingSchemeRequest,
   CreateCapitalContributionRequest,
+  CreateProfitSharingSchemeRequest,
   CreateProfitSharingSettlementRequest,
   CreateCultivationExpenseRequest,
   CreateCropCycleRequest,
@@ -42,6 +44,13 @@ import type {
   Organization,
   ProfitSharingSettlement,
   ProfitSharingSettlementFilter,
+  ProfitSharingPreview,
+  ProfitSharingScheme,
+  ProfitSharingSchemeAssignment,
+  ProfitSharingSchemeFilter,
+  ProfitSharingWaterfallSettlement,
+  ProfitSharingWaterfallSettlementFilter,
+  FinalizeProfitSharingWaterfallSettlementRequest,
   Sale,
   SaleFilter,
   SalePayment,
@@ -63,7 +72,9 @@ import type {
   UpdateSaleLineRequest,
   UpdateSaleRequest,
   UpdateProfitSharingSettlementRequest,
+  UpdateProfitSharingSchemeDraftRequest,
   VoidProfitSharingSettlementRequest,
+  VoidProfitSharingWaterfallSettlementRequest,
 } from "@/lib/api/contracts";
 
 const API_PREFIX = "/api/v1";
@@ -1143,6 +1154,204 @@ export function voidProfitSharingSettlement(
 ): Promise<ProfitSharingSettlement> {
   return csrfRequest<ProfitSharingSettlement>(
     getProfitSharingSettlementsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(settlementId)}/void`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+function getProfitSharingSchemesPath(
+  organizationId: string,
+  suffix = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/profit-sharing-schemes${suffix}`,
+  );
+}
+
+export function getProfitSharingSchemes(
+  organizationId: string,
+  filter: ProfitSharingSchemeFilter = {},
+): Promise<ProfitSharingScheme[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.code?.trim()) search.set("code", filter.code.trim());
+  const query = search.toString();
+
+  return apiRequest<ProfitSharingScheme[]>(
+    `${getProfitSharingSchemesPath(organizationId)}${query ? `?${query}` : ""}`,
+  );
+}
+
+export function getProfitSharingScheme(
+  organizationId: string,
+  schemeId: string,
+): Promise<ProfitSharingScheme> {
+  return apiRequest<ProfitSharingScheme>(
+    getProfitSharingSchemesPath(
+      organizationId,
+      `/${encodeURIComponent(schemeId)}`,
+    ),
+  );
+}
+
+export function createProfitSharingScheme(
+  organizationId: string,
+  request: CreateProfitSharingSchemeRequest,
+): Promise<ProfitSharingScheme> {
+  return csrfRequest<ProfitSharingScheme>(
+    getProfitSharingSchemesPath(organizationId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateProfitSharingScheme(
+  organizationId: string,
+  schemeId: string,
+  request: UpdateProfitSharingSchemeDraftRequest,
+): Promise<ProfitSharingScheme> {
+  return csrfRequest<ProfitSharingScheme>(
+    getProfitSharingSchemesPath(
+      organizationId,
+      `/${encodeURIComponent(schemeId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function createNextProfitSharingSchemeVersion(
+  organizationId: string,
+  sourceSchemeId: string,
+): Promise<ProfitSharingScheme> {
+  return csrfRequest<ProfitSharingScheme>(
+    getProfitSharingSchemesPath(
+      organizationId,
+      `/${encodeURIComponent(sourceSchemeId)}/versions`,
+    ),
+    { method: "POST" },
+  );
+}
+
+export function activateProfitSharingScheme(
+  organizationId: string,
+  schemeId: string,
+): Promise<ProfitSharingScheme> {
+  return csrfRequest<ProfitSharingScheme>(
+    getProfitSharingSchemesPath(
+      organizationId,
+      `/${encodeURIComponent(schemeId)}/activate`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+function getProfitSharingSchemeAssignmentPath(
+  organizationId: string,
+  cropCycleId: string,
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/profit-sharing-scheme`,
+  );
+}
+
+export function getProfitSharingSchemeAssignment(
+  organizationId: string,
+  cropCycleId: string,
+): Promise<ProfitSharingSchemeAssignment> {
+  return apiRequest<ProfitSharingSchemeAssignment>(
+    getProfitSharingSchemeAssignmentPath(organizationId, cropCycleId),
+  );
+}
+
+export function assignProfitSharingScheme(
+  organizationId: string,
+  cropCycleId: string,
+  request: AssignProfitSharingSchemeRequest,
+): Promise<ProfitSharingSchemeAssignment> {
+  return csrfRequest<ProfitSharingSchemeAssignment>(
+    getProfitSharingSchemeAssignmentPath(organizationId, cropCycleId),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function getProfitSharingPreview(
+  organizationId: string,
+  cropCycleId: string,
+): Promise<ProfitSharingPreview> {
+  return apiRequest<ProfitSharingPreview>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/crop-cycles/${encodeURIComponent(cropCycleId)}/profit-sharing-preview`,
+    ),
+  );
+}
+
+function getProfitSharingWaterfallSettlementsPath(
+  organizationId: string,
+  cropCycleId: string,
+  suffix = "",
+): string {
+  return getOrganizationResourcePath(
+    organizationId,
+    `/crop-cycles/${encodeURIComponent(cropCycleId)}/profit-sharing-waterfall-settlements${suffix}`,
+  );
+}
+
+export function getProfitSharingWaterfallSettlements(
+  organizationId: string,
+  cropCycleId: string,
+  filter: ProfitSharingWaterfallSettlementFilter = {},
+): Promise<ProfitSharingWaterfallSettlement[]> {
+  const search = new URLSearchParams();
+  if (filter.status !== undefined) search.set("status", String(filter.status));
+  if (filter.settlementDateFrom) {
+    search.set("settlementDateFrom", filter.settlementDateFrom);
+  }
+  if (filter.settlementDateTo) search.set("settlementDateTo", filter.settlementDateTo);
+  const query = search.toString();
+
+  return apiRequest<ProfitSharingWaterfallSettlement[]>(
+    `${getProfitSharingWaterfallSettlementsPath(organizationId, cropCycleId)}${query ? `?${query}` : ""}`,
+  );
+}
+
+export function getProfitSharingWaterfallSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  settlementId: string,
+): Promise<ProfitSharingWaterfallSettlement> {
+  return apiRequest<ProfitSharingWaterfallSettlement>(
+    getProfitSharingWaterfallSettlementsPath(
+      organizationId,
+      cropCycleId,
+      `/${encodeURIComponent(settlementId)}`,
+    ),
+  );
+}
+
+export function finalizeProfitSharingWaterfallSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  request: FinalizeProfitSharingWaterfallSettlementRequest,
+): Promise<ProfitSharingWaterfallSettlement> {
+  return csrfRequest<ProfitSharingWaterfallSettlement>(
+    getProfitSharingWaterfallSettlementsPath(organizationId, cropCycleId),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function voidProfitSharingWaterfallSettlement(
+  organizationId: string,
+  cropCycleId: string,
+  settlementId: string,
+  request: VoidProfitSharingWaterfallSettlementRequest,
+): Promise<ProfitSharingWaterfallSettlement> {
+  return csrfRequest<ProfitSharingWaterfallSettlement>(
+    getProfitSharingWaterfallSettlementsPath(
       organizationId,
       cropCycleId,
       `/${encodeURIComponent(settlementId)}/void`,

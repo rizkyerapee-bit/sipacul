@@ -3,7 +3,9 @@ import {
   addCultivationActivityResource,
   addLandPlot,
   addSaleLine,
+  activateProfitSharingScheme,
   ApiError,
+  assignProfitSharingScheme,
   bootstrapOwner,
   cancelCapitalContribution,
   cancelCultivationExpense,
@@ -21,6 +23,8 @@ import {
   confirmSalePayment,
   createCropCycle,
   createCapitalContribution,
+  createNextProfitSharingSchemeVersion,
+  createProfitSharingScheme,
   createProfitSharingSettlement,
   createCultivationActivity,
   createCultivationExpense,
@@ -41,7 +45,13 @@ import {
   getHarvestBatches,
   getLands,
   getOrganization,
+  getProfitSharingPreview,
+  getProfitSharingScheme,
+  getProfitSharingSchemeAssignment,
+  getProfitSharingSchemes,
   getProfitSharingSettlements,
+  getProfitSharingWaterfallSettlement,
+  getProfitSharingWaterfallSettlements,
   getSales,
   getSalePayments,
   getSaleReceivable,
@@ -68,8 +78,11 @@ import {
   updateSalePayment,
   updateSaleLine,
   updateProfitSharingSettlement,
+  updateProfitSharingScheme,
   finalizeProfitSharingSettlement,
+  finalizeProfitSharingWaterfallSettlement,
   voidProfitSharingSettlement,
+  voidProfitSharingWaterfallSettlement,
 } from "@/lib/api/client";
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -813,5 +826,134 @@ describe("SiPacul API client", () => {
     ]);
     expect([2, 4, 6, 8].map((index) => (fetchMock.mock.calls[index][1] as RequestInit).method))
       .toEqual(["POST", "PUT", "PATCH", "PATCH"]);
+  });
+
+  it("reads the versioned profit-sharing scheme catalog with encoded filters", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ id: "scheme 1" }));
+
+    await getProfitSharingSchemes("org 1", {
+      status: 2,
+      code: " MITRA UTAMA ",
+    });
+    await getProfitSharingScheme("org 1", "scheme 1");
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "/api/v1/organizations/org%201/profit-sharing-schemes?status=2&code=MITRA+UTAMA",
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "/api/v1/organizations/org%201/profit-sharing-schemes/scheme%201",
+    );
+  });
+
+  it("writes the complete profit-sharing scheme version lifecycle through CSRF", async () => {
+    const createRequest = {
+      code: "MITRA-1",
+      name: "Skema Mitra",
+      description: null,
+      participants: [
+        {
+          participantCode: "PERUSAHAAN",
+          participantName: "Perusahaan",
+          participantRole: 1 as const,
+          participatesInResidualProfit: true,
+          sequence: 1,
+        },
+      ],
+      priorityRules: [],
+      residualMethod: 1 as const,
+      residualRecipientCode: "PERUSAHAAN",
+      residualShares: [],
+    };
+
+    for (let index = 0; index < 4; index += 1) {
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({
+          requestToken: `scheme-${index}`,
+          headerName: "X-CSRF",
+        }))
+        .mockResolvedValueOnce(jsonResponse({ id: "scheme 1" }, index < 2 ? 201 : 200));
+    }
+
+    await createProfitSharingScheme("org 1", createRequest);
+    await updateProfitSharingScheme("org 1", "scheme 1", {
+      name: createRequest.name,
+      description: createRequest.description,
+      participants: createRequest.participants,
+      priorityRules: createRequest.priorityRules,
+      residualMethod: createRequest.residualMethod,
+      residualRecipientCode: createRequest.residualRecipientCode,
+      residualShares: createRequest.residualShares,
+    });
+    await createNextProfitSharingSchemeVersion("org 1", "scheme 1");
+    await activateProfitSharingScheme("org 1", "scheme 1");
+
+    const base = "/api/v1/organizations/org%201/profit-sharing-schemes";
+    expect([1, 3, 5, 7].map((index) => fetchMock.mock.calls[index][0])).toEqual([
+      base,
+      `${base}/scheme%201`,
+      `${base}/scheme%201/versions`,
+      `${base}/scheme%201/activate`,
+    ]);
+    expect([1, 3, 5, 7].map((index) =>
+      (fetchMock.mock.calls[index][1] as RequestInit).method))
+      .toEqual(["POST", "PUT", "POST", "PATCH"]);
+  });
+
+  it("reads and assigns a scheme snapshot before loading the waterfall preview", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ id: "assignment-1" }))
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "assignment-csrf", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "assignment-1" }))
+      .mockResolvedValueOnce(jsonResponse({ calculationVersion: "SIPACUL-PS-2" }));
+
+    await getProfitSharingSchemeAssignment("org 1", "cycle 1");
+    await assignProfitSharingScheme("org 1", "cycle 1", { schemeId: "scheme 1" });
+    await getProfitSharingPreview("org 1", "cycle 1");
+
+    const base = "/api/v1/organizations/org%201/crop-cycles/cycle%201";
+    expect(fetchMock.mock.calls[0][0]).toBe(`${base}/profit-sharing-scheme`);
+    expect(fetchMock.mock.calls[2][0]).toBe(`${base}/profit-sharing-scheme`);
+    expect((fetchMock.mock.calls[2][1] as RequestInit).method).toBe("PUT");
+    expect(fetchMock.mock.calls[3][0]).toBe(`${base}/profit-sharing-preview`);
+  });
+
+  it("reads, finalizes, and voids waterfall settlements through V2 routes", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ id: "settlement 1" }))
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "finalize-csrf", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "settlement 1" }, 201))
+      .mockResolvedValueOnce(jsonResponse({ requestToken: "void-csrf", headerName: "X-CSRF" }))
+      .mockResolvedValueOnce(jsonResponse({ id: "settlement 1", status: 2 }));
+
+    await getProfitSharingWaterfallSettlements("org 1", "cycle 1", {
+      status: 1,
+      settlementDateFrom: "2027-07-01",
+      settlementDateTo: "2027-07-31",
+    });
+    await getProfitSharingWaterfallSettlement("org 1", "cycle 1", "settlement 1");
+    await finalizeProfitSharingWaterfallSettlement("org 1", "cycle 1", {
+      code: "WF-001",
+      settlementDate: "2027-07-24",
+      notes: null,
+    });
+    await voidProfitSharingWaterfallSettlement(
+      "org 1",
+      "cycle 1",
+      "settlement 1",
+      { voidReason: "Koreksi sumber" },
+    );
+
+    const base = "/api/v1/organizations/org%201/crop-cycles/cycle%201/profit-sharing-waterfall-settlements";
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      `${base}?status=1&settlementDateFrom=2027-07-01&settlementDateTo=2027-07-31`,
+    );
+    expect(fetchMock.mock.calls[1][0]).toBe(`${base}/settlement%201`);
+    expect(fetchMock.mock.calls[3][0]).toBe(base);
+    expect((fetchMock.mock.calls[3][1] as RequestInit).method).toBe("POST");
+    expect(fetchMock.mock.calls[5][0]).toBe(`${base}/settlement%201/void`);
+    expect((fetchMock.mock.calls[5][1] as RequestInit).method).toBe("PATCH");
   });
 });

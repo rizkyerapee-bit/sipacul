@@ -775,6 +775,276 @@ export type ProfitSharingSettlementFilter = {
   managingPartnerCode?: string;
 };
 
+export type ProfitSharingParticipantRole = 1 | 2 | 3 | 4;
+
+export type ProfitSharingPriorityRuleType = 1 | 2;
+
+export type ProfitSharingResidualMethod = 1 | 2 | 3;
+
+export type ProfitSharingSchemeStatus = 1 | 2 | 3;
+
+export type ProfitSharingWaterfallSettlementStatus = 1 | 2;
+
+export type ProfitSharingSchemeParticipantRequest = {
+  participantCode: string;
+  participantName: string;
+  participantRole: ProfitSharingParticipantRole;
+  participatesInResidualProfit: boolean;
+  sequence: number;
+};
+
+export type ProfitSharingSchemePriorityRuleRequest = {
+  ruleCode: string;
+  ruleType: ProfitSharingPriorityRuleType;
+  recipientCode: string;
+  rateNumerator: number;
+  rateDenominator: number;
+  sequence: number;
+};
+
+export type ProfitSharingSchemeResidualShareRequest = {
+  recipientCode: string;
+  rateNumerator: number;
+  rateDenominator: number;
+  sequence: number;
+};
+
+export type CreateProfitSharingSchemeRequest = {
+  code: string;
+  name: string;
+  description: string | null;
+  participants: ProfitSharingSchemeParticipantRequest[];
+  priorityRules: ProfitSharingSchemePriorityRuleRequest[];
+  residualMethod: ProfitSharingResidualMethod;
+  residualRecipientCode: string | null;
+  residualShares: ProfitSharingSchemeResidualShareRequest[];
+};
+
+export type UpdateProfitSharingSchemeDraftRequest = Omit<
+  CreateProfitSharingSchemeRequest,
+  "code"
+>;
+
+export type ProfitSharingSchemeFilter = {
+  status?: ProfitSharingSchemeStatus;
+  code?: string;
+};
+
+export type ProfitSharingSchemeParticipant =
+  ProfitSharingSchemeParticipantRequest & {
+    id: string;
+  };
+
+export type ProfitSharingSchemePriorityRule =
+  ProfitSharingSchemePriorityRuleRequest & {
+    id: string;
+  };
+
+export type ProfitSharingSchemeResidualShare =
+  ProfitSharingSchemeResidualShareRequest & {
+    id: string;
+  };
+
+export type ProfitSharingScheme = {
+  id: string;
+  organizationId: string;
+  schemeFamilyId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  version: number;
+  status: ProfitSharingSchemeStatus;
+  residualMethod: ProfitSharingResidualMethod;
+  residualRecipientCode: string | null;
+  activatedAt: string | null;
+  supersededAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  participants: ProfitSharingSchemeParticipant[];
+  priorityRules: ProfitSharingSchemePriorityRule[];
+  residualShares: ProfitSharingSchemeResidualShare[];
+};
+
+export type AssignProfitSharingSchemeRequest = {
+  schemeId: string;
+};
+
+export type ProfitSharingSchemeAssignmentParticipant =
+  ProfitSharingSchemeParticipant;
+
+export type ProfitSharingSchemeAssignmentPriorityRule =
+  ProfitSharingSchemePriorityRule;
+
+export type ProfitSharingSchemeAssignmentResidualShare =
+  ProfitSharingSchemeResidualShare;
+
+export type ProfitSharingSchemeAssignment = {
+  id: string;
+  organizationId: string;
+  cropCycleId: string;
+  sourceSchemeId: string;
+  schemeFamilyId: string;
+  schemeCode: string;
+  schemeName: string;
+  schemeDescription: string | null;
+  schemeVersion: number;
+  residualMethod: ProfitSharingResidualMethod;
+  residualRecipientCode: string | null;
+  assignedAt: string;
+  createdAt: string;
+  updatedAt: string | null;
+  participants: ProfitSharingSchemeAssignmentParticipant[];
+  priorityRules: ProfitSharingSchemeAssignmentPriorityRule[];
+  residualShares: ProfitSharingSchemeAssignmentResidualShare[];
+};
+
+export type ProfitSharingPriorityAllocationPreview = {
+  ruleCode: string;
+  ruleType: ProfitSharingPriorityRuleType;
+  recipientCodeSnapshot: string;
+  recipientNameSnapshot: string;
+  rateNumerator: number;
+  rateDenominator: number;
+  baseAmount: number;
+  requestedAmount: number;
+  allocatedAmount: number;
+  unallocatedAmount: number;
+  sequence: number;
+};
+
+export type ProfitSharingParticipantAllocationPreview = {
+  participantCodeSnapshot: string;
+  participantNameSnapshot: string;
+  participantRole: ProfitSharingParticipantRole;
+  confirmedCapital: number;
+  capitalRatio: number;
+  participatesInResidualProfit: boolean;
+  capitalRecovery: number;
+  capitalLoss: number;
+  managementProfitShare: number;
+  returnOnCapitalProfitShare: number;
+  residualProfitShare: number;
+  totalProfitShare: number;
+  totalPayout: number;
+  sequence: number;
+};
+
+export type ProfitSharingPreviewTotals = {
+  totalCapital: number;
+  totalCapitalRecovery: number;
+  totalCapitalLoss: number;
+  totalManagementProfitShare: number;
+  totalReturnOnCapitalProfitShare: number;
+  totalPriorityProfitShare: number;
+  totalResidualProfitShare: number;
+  totalProfitShare: number;
+  totalPayout: number;
+  residualMethod: ProfitSharingResidualMethod;
+};
+
+export type ProfitSharingPreview = {
+  organizationId: string;
+  cropCycleId: string;
+  isPersisted: boolean;
+  calculationVersion: string;
+  generatedAt: string;
+  schemeSnapshot: ProfitSharingSchemeAssignment;
+  profitability: CropCycleProfitability;
+  totals: ProfitSharingPreviewTotals;
+  priorityAllocations: ProfitSharingPriorityAllocationPreview[];
+  allocations: ProfitSharingParticipantAllocationPreview[];
+};
+
+export type FinalizeProfitSharingWaterfallSettlementRequest = {
+  code: string;
+  settlementDate: string;
+  notes: string | null;
+};
+
+export type VoidProfitSharingWaterfallSettlementRequest = {
+  voidReason: string;
+};
+
+export type ProfitSharingWaterfallSettlementFilter = {
+  status?: ProfitSharingWaterfallSettlementStatus;
+  settlementDateFrom?: string;
+  settlementDateTo?: string;
+};
+
+export type ProfitSharingWaterfallPriorityAllocation =
+  ProfitSharingPriorityAllocationPreview & {
+    id: string;
+  };
+
+export type ProfitSharingWaterfallParticipantAllocation =
+  ProfitSharingParticipantAllocationPreview & {
+    id: string;
+  };
+
+export type ProfitSharingWaterfallResidualShare = {
+  id: string;
+  recipientCodeSnapshot: string;
+  rateNumerator: number;
+  rateDenominator: number;
+  sequence: number;
+};
+
+export type ProfitSharingWaterfallSettlement = {
+  id: string;
+  organizationId: string;
+  cropCycleId: string;
+  assignmentId: string;
+  sourceSchemeId: string;
+  schemeFamilyId: string;
+  code: string;
+  settlementDate: string;
+  schemeCodeSnapshot: string;
+  schemeNameSnapshot: string;
+  schemeDescriptionSnapshot: string | null;
+  schemeVersionSnapshot: number;
+  schemeAssignedAtSnapshot: string;
+  residualMethod: ProfitSharingResidualMethod;
+  residualRecipientCodeSnapshot: string | null;
+  cropCycleCodeSnapshot: string;
+  cropCycleNameSnapshot: string;
+  commodityIdSnapshot: string;
+  commodityCodeSnapshot: string;
+  commodityNameSnapshot: string;
+  recognizedRevenue: number;
+  collectedRevenue: number;
+  outstandingReceivable: number;
+  activityResourceCost: number;
+  manualExpenseCost: number;
+  totalCultivationCost: number;
+  netProfit: number;
+  outcome: ProfitabilityOutcome;
+  confirmedInvestorCapital: number;
+  confirmedPartnerCapital: number;
+  totalConfirmedCapital: number;
+  availableHarvestQuantity: number;
+  totalCapital: number;
+  totalCapitalRecovery: number;
+  totalCapitalLoss: number;
+  totalManagementProfitShare: number;
+  totalReturnOnCapitalProfitShare: number;
+  totalPriorityProfitShare: number;
+  totalResidualProfitShare: number;
+  totalProfitShare: number;
+  totalPayout: number;
+  calculationVersion: string;
+  calculatedAt: string;
+  notes: string | null;
+  status: ProfitSharingWaterfallSettlementStatus;
+  finalizedAt: string;
+  voidedAt: string | null;
+  voidReason: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+  priorityAllocations: ProfitSharingWaterfallPriorityAllocation[];
+  participantAllocations: ProfitSharingWaterfallParticipantAllocation[];
+  residualShares: ProfitSharingWaterfallResidualShare[];
+};
+
 export type ApiProblem = {
   type?: string;
   title?: string;
