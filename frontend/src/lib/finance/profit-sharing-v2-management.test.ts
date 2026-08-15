@@ -7,6 +7,7 @@ import {
   buildCreateProfitSharingSchemeRequest,
   buildUpdateProfitSharingSchemeRequest,
   createProfitSharingSchemeDraft,
+  filterProfitSharingSchemes,
   formatProfitSharingRate,
   moveProfitSharingSchemeItem,
   profitSharingParticipantRoleLabels,
@@ -14,7 +15,9 @@ import {
   profitSharingResidualMethodLabels,
   profitSharingSchemeDraftFrom,
   profitSharingSchemeStatusLabels,
+  profitSharingSchemeUsesPassiveInvestor,
   profitSharingWaterfallStatusLabels,
+  summarizeProfitSharingSchemes,
   validateProfitSharingSchemeDraft,
 } from "@/lib/finance/profit-sharing-v2-management";
 
@@ -289,5 +292,56 @@ describe("profit-sharing V2 management", () => {
   it("formats stored fractions as localized percentages", () => {
     expect(formatProfitSharingRate(1, 3)).toBe("33,3333%");
     expect(formatProfitSharingRate(1, 0)).toBe("—");
+  });
+
+  it("summarizes versions separately from scheme families", () => {
+    const active = { ...schemeFixture(), id: "active", status: 2 as const };
+    const superseded = {
+      ...schemeFixture(),
+      id: "old",
+      status: 3 as const,
+      version: 1,
+    };
+    const anotherDraft = {
+      ...schemeFixture(),
+      id: "other",
+      schemeFamilyId: "family-2",
+      code: "INTERNAL",
+    };
+
+    expect(summarizeProfitSharingSchemes([active, superseded, anotherDraft]))
+      .toEqual({ total: 3, families: 2, draft: 1, active: 1, superseded: 1 });
+  });
+
+  it("filters schemes by status and searchable identity", () => {
+    const managed = schemeFixture();
+    const internal = {
+      ...schemeFixture(),
+      id: "scheme-2",
+      code: "INTERNAL",
+      name: "Internal Perusahaan",
+      description: "Seluruhnya dikelola perusahaan",
+      status: 2 as const,
+    };
+
+    expect(filterProfitSharingSchemes([managed, internal], "mitra", "all"))
+      .toEqual([managed]);
+    expect(filterProfitSharingSchemes([managed, internal], "", 2))
+      .toEqual([internal]);
+  });
+
+  it("detects a passive investor from participant roles", () => {
+    const scheme = schemeFixture();
+    expect(profitSharingSchemeUsesPassiveInvestor(scheme)).toBe(false);
+
+    scheme.participants.push({
+      id: "participant-3",
+      participantCode: "INVESTOR-PASIF",
+      participantName: "Investor Pasif",
+      participantRole: 2,
+      participatesInResidualProfit: true,
+      sequence: 3,
+    });
+    expect(profitSharingSchemeUsesPassiveInvestor(scheme)).toBe(true);
   });
 });

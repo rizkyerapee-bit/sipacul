@@ -54,6 +54,7 @@ import {
   type SettlementDraft,
   type SettlementStatusFilter,
 } from "@/lib/finance/profit-sharing-management";
+import { ProfitSharingSchemeManagement } from "./profit-sharing-scheme-management";
 import styles from "./receivable-management.module.css";
 
 type Props = {
@@ -62,7 +63,7 @@ type Props = {
   permissions: string[];
 };
 
-type View = "overview" | "capital" | "settlements";
+type View = "overview" | "capital" | "settlements" | "schemes";
 type CapitalEditorState = { contributionId: string | null };
 type SettlementEditorState = { settlementId: string | null };
 type ActionState =
@@ -652,27 +653,34 @@ export function ProfitSharingManagement({ organization, organizationId, permissi
         </div>
         <div className={styles.heroActions}>
           {(!canWriteFinance || !canWriteSharing) && <span className={styles.readOnlyBadge}>Sebagian mode baca</span>}
-          <button className={styles.secondaryButton} type="button" disabled={!selectedCycleId || isRefreshing} onClick={() => selectedCycleId && void loadCycleData(organizationId, selectedCycleId, true)}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>
+          {view !== "schemes" && <button className={styles.secondaryButton} type="button" disabled={!selectedCycleId || isRefreshing} onClick={() => selectedCycleId && void loadCycleData(organizationId, selectedCycleId, true)}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>}
         </div>
       </header>
 
       <div className={`${styles.toolbar} ${styles.profitToolbar}`}>
-        <label className={styles.filterField}>
+        {view !== "schemes" ? <label className={styles.filterField}>
           <span>Siklus budidaya</span>
           <select value={selectedCycleId} disabled={cycles.length === 0} onChange={(event) => selectCycle(event.target.value)}>
             {cycles.length === 0 && <option value="">Belum ada siklus</option>}
             {cycles.map((cycle) => <option value={cycle.id} key={cycle.id}>{cycle.code} · {cycle.name} · {cropCycleStatusLabels[cycle.status]}</option>)}
           </select>
-        </label>
+        </label> : <span className={styles.resultCount}>Katalog tingkat organisasi · SIPACUL-PS-2</span>}
         <div className={`${styles.heroActions} ${styles.profitTabs}`} role="tablist" aria-label="Bagian pembagian hasil">
           <button aria-selected={view === "overview"} className={view === "overview" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("overview")}>Profitabilitas</button>
           {canReadFinance && <button aria-selected={view === "capital"} className={view === "capital" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("capital")}>Modal</button>}
+          {canReadSharing && <button aria-selected={view === "schemes"} className={view === "schemes" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("schemes")}>Skema V2</button>}
           {canReadSharing && <button aria-selected={view === "settlements"} className={view === "settlements" ? styles.primaryButton : styles.secondaryButton} role="tab" type="button" onClick={() => setView("settlements")}>Pembagian hasil</button>}
         </div>
       </div>
 
-      {pageError && <div className={styles.pageError} role="alert">{pageError}</div>}
-      {isLoading ? (
+      {pageError && view !== "schemes" && <div className={styles.pageError} role="alert">{pageError}</div>}
+      {view === "schemes" ? (
+        <ProfitSharingSchemeManagement
+          organizationId={organizationId}
+          canWrite={canWriteSharing}
+          canActivate={canFinalize}
+        />
+      ) : isLoading ? (
         <div className={styles.loadingState}><span /><strong>Memuat data profitabilitas...</strong><p>SiPacul sedang menyatukan pendapatan, biaya, modal, dan settlement.</p></div>
       ) : !selectedCycle ? (
         <div className={styles.emptyState}><span className={styles.editorIcon}><Icon name="trend" /></span><h2>Belum ada siklus budidaya</h2><p>Buat siklus budidaya sebelum mencatat modal dan pembagian hasil.</p></div>

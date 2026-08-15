@@ -14,6 +14,16 @@ export type ProfitSharingSchemePreset =
   | "managed"
   | "passive-investor";
 
+export type ProfitSharingSchemeStatusFilter = ProfitSharingSchemeStatus | "all";
+
+export type ProfitSharingSchemeSummary = {
+  total: number;
+  families: number;
+  draft: number;
+  active: number;
+  superseded: number;
+};
+
 export type ProfitSharingSchemeParticipantDraft = {
   participantCode: string;
   participantName: string;
@@ -101,6 +111,40 @@ export const profitSharingSchemePresetLabels: Record<
   managed: "Dikelola mitra",
   "passive-investor": "Perusahaan dan investor pasif",
 };
+
+export function summarizeProfitSharingSchemes(
+  schemes: ProfitSharingScheme[],
+): ProfitSharingSchemeSummary {
+  return {
+    total: schemes.length,
+    families: new Set(schemes.map((scheme) => scheme.schemeFamilyId)).size,
+    draft: schemes.filter((scheme) => scheme.status === 1).length,
+    active: schemes.filter((scheme) => scheme.status === 2).length,
+    superseded: schemes.filter((scheme) => scheme.status === 3).length,
+  };
+}
+
+export function filterProfitSharingSchemes(
+  schemes: ProfitSharingScheme[],
+  query: string,
+  status: ProfitSharingSchemeStatusFilter,
+): ProfitSharingScheme[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase("id-ID");
+
+  return schemes.filter((scheme) => {
+    if (status !== "all" && scheme.status !== status) return false;
+    if (!normalizedQuery) return true;
+
+    return [scheme.code, scheme.name, scheme.description ?? ""]
+      .some((value) => value.toLocaleLowerCase("id-ID").includes(normalizedQuery));
+  });
+}
+
+export function profitSharingSchemeUsesPassiveInvestor(
+  scheme: ProfitSharingScheme,
+): boolean {
+  return scheme.participants.some((participant) => participant.participantRole === 2);
+}
 
 const codePattern = /^[A-Z0-9][A-Z0-9._-]{0,39}$/;
 const ratePattern = /^\d+(?:[.,]\d{1,8})?$/;
