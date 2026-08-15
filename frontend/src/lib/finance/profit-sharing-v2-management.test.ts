@@ -14,10 +14,12 @@ import {
   profitSharingPriorityRuleTypeLabels,
   profitSharingResidualMethodLabels,
   profitSharingSchemeDraftFrom,
+  profitSharingAssignmentAvailability,
   profitSharingSchemeStatusLabels,
   profitSharingSchemeUsesPassiveInvestor,
   profitSharingWaterfallStatusLabels,
   summarizeProfitSharingSchemes,
+  summarizeProfitSharingPreview,
   validateProfitSharingSchemeDraft,
 } from "@/lib/finance/profit-sharing-v2-management";
 
@@ -343,5 +345,50 @@ describe("profit-sharing V2 management", () => {
       sequence: 3,
     });
     expect(profitSharingSchemeUsesPassiveInvestor(scheme)).toBe(true);
+  });
+
+  it("allows an initial assignment while planned or already in progress", () => {
+    expect(profitSharingAssignmentAvailability(1, false).allowed).toBe(true);
+    expect(profitSharingAssignmentAvailability(2, false).allowed).toBe(true);
+  });
+
+  it("only permits replacing an assignment before the cycle starts", () => {
+    expect(profitSharingAssignmentAvailability(1, true)).toMatchObject({
+      allowed: true,
+      replaceable: true,
+    });
+    expect(profitSharingAssignmentAvailability(2, true)).toMatchObject({
+      allowed: false,
+      replaceable: false,
+    });
+    expect(profitSharingAssignmentAvailability(3, false).allowed).toBe(false);
+    expect(profitSharingAssignmentAvailability(4, false).allowed).toBe(false);
+  });
+
+  it("summarizes preview reconciliation and allocation warnings", () => {
+    const preview = {
+      totals: {
+        totalCapitalRecovery: 100,
+        totalProfitShare: 50,
+        totalPayout: 150,
+        totalCapitalLoss: 0,
+      },
+      allocations: [
+        { confirmedCapital: 100 },
+        { confirmedCapital: 0 },
+      ],
+      priorityAllocations: [
+        { unallocatedAmount: 2 },
+        { unallocatedAmount: 3 },
+      ],
+    } as never;
+
+    expect(summarizeProfitSharingPreview(preview)).toEqual({
+      participantCount: 2,
+      fundedParticipantCount: 1,
+      unallocatedPriorityAmount: 5,
+      hasCapitalLoss: false,
+      isPayoutReconciled: true,
+    });
   });
 });

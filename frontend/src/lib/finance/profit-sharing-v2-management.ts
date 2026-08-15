@@ -1,10 +1,12 @@
 import type {
   CreateProfitSharingSchemeRequest,
+  CropCycleStatus,
   ProfitSharingParticipantRole,
   ProfitSharingPriorityRuleType,
   ProfitSharingResidualMethod,
   ProfitSharingScheme,
   ProfitSharingSchemeStatus,
+  ProfitSharingPreview,
   ProfitSharingWaterfallSettlementStatus,
   UpdateProfitSharingSchemeDraftRequest,
 } from "@/lib/api/contracts";
@@ -22,6 +24,20 @@ export type ProfitSharingSchemeSummary = {
   draft: number;
   active: number;
   superseded: number;
+};
+
+export type ProfitSharingAssignmentAvailability = {
+  allowed: boolean;
+  replaceable: boolean;
+  reason: string;
+};
+
+export type ProfitSharingPreviewSummary = {
+  participantCount: number;
+  fundedParticipantCount: number;
+  unallocatedPriorityAmount: number;
+  hasCapitalLoss: boolean;
+  isPayoutReconciled: boolean;
 };
 
 export type ProfitSharingSchemeParticipantDraft = {
@@ -144,6 +160,52 @@ export function profitSharingSchemeUsesPassiveInvestor(
   scheme: ProfitSharingScheme,
 ): boolean {
   return scheme.participants.some((participant) => participant.participantRole === 2);
+}
+
+export function profitSharingAssignmentAvailability(
+  cropCycleStatus: CropCycleStatus,
+  hasAssignment: boolean,
+): ProfitSharingAssignmentAvailability {
+  if (cropCycleStatus === 3 || cropCycleStatus === 4) {
+    return {
+      allowed: false,
+      replaceable: false,
+      reason: "Siklus yang selesai atau dibatalkan tidak dapat menerima skema.",
+    };
+  }
+
+  if (hasAssignment && cropCycleStatus !== 1) {
+    return {
+      allowed: false,
+      replaceable: false,
+      reason: "Skema terkunci setelah siklus mulai berjalan.",
+    };
+  }
+
+  return {
+    allowed: true,
+    replaceable: hasAssignment,
+    reason: hasAssignment
+      ? "Skema masih dapat diganti karena siklus belum dimulai."
+      : "Pilih satu skema aktif untuk menyimpan snapshot aturan pada siklus.",
+  };
+}
+
+export function summarizeProfitSharingPreview(
+  preview: ProfitSharingPreview,
+): ProfitSharingPreviewSummary {
+  const expectedPayout = preview.totals.totalCapitalRecovery
+    + preview.totals.totalProfitShare;
+
+  return {
+    participantCount: preview.allocations.length,
+    fundedParticipantCount: preview.allocations
+      .filter((allocation) => allocation.confirmedCapital > 0).length,
+    unallocatedPriorityAmount: preview.priorityAllocations
+      .reduce((total, allocation) => total + allocation.unallocatedAmount, 0),
+    hasCapitalLoss: preview.totals.totalCapitalLoss > 0,
+    isPayoutReconciled: Math.abs(preview.totals.totalPayout - expectedPayout) < 0.01,
+  };
 }
 
 const codePattern = /^[A-Z0-9][A-Z0-9._-]{0,39}$/;
