@@ -23,6 +23,7 @@ import {
   summarizeSeasonPage,
 } from "@/lib/evaluations/season-history";
 import styles from "./season-history-management.module.css";
+import { SeasonReviewPanel } from "./season-review-panel";
 
 type Props = {
   organization: Organization | null;
@@ -102,7 +103,7 @@ function PercentageBar({ value }: { value: number | null }) {
   );
 }
 
-function SeasonDetail({ season }: { season: SeasonEvaluation }) {
+function SeasonDetail({ season, organizationId, canReadReview, canWriteReview }: { season: SeasonEvaluation; organizationId: string; canReadReview: boolean; canWriteReview: boolean }) {
   return (
     <article className={styles.detailPanel}>
       <header className={styles.detailHeader}>
@@ -176,6 +177,8 @@ function SeasonDetail({ season }: { season: SeasonEvaluation }) {
           </div>
         )}
       </section>
+
+      <SeasonReviewPanel organizationId={organizationId} cropCycleId={season.cropCycleId} isReadyForReview={season.isReadyForReview} canRead={canReadReview} canWrite={canWriteReview} />
     </article>
   );
 }
@@ -194,6 +197,8 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const canReadReview = permissions.includes("cultivation.read");
+  const canWriteReview = permissions.includes("cultivation.write");
   const canReadFinance = permissions.includes("finance.read");
   const canReadLands = permissions.includes("lands.read");
   const canRead = canReadFinance && canReadLands;
@@ -346,7 +351,7 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
                 </div>
                 <footer className={styles.pagination}><button type="button" disabled={!history.hasPreviousPage || isLoadingHistory} onClick={() => setPage((current) => Math.max(1, current - 1))}><Icon name="previous" /> Sebelumnya</button><span>Halaman <strong>{history.page}</strong> dari <strong>{Math.max(1, history.totalPages)}</strong></span><button type="button" disabled={!history.hasNextPage || isLoadingHistory} onClick={() => setPage((current) => current + 1)}>Berikutnya <Icon name="next" /></button></footer>
               </aside>
-              {selectedSeason && <SeasonDetail season={selectedSeason} />}
+              {selectedSeason && <SeasonDetail season={selectedSeason} organizationId={organizationId} canReadReview={canReadReview} canWriteReview={canWriteReview} />}
             </div>
           )}
         </>
