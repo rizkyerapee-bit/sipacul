@@ -13,6 +13,7 @@ using SiPacul.Domain.Entities.Lands;
 using SiPacul.Domain.Entities.MasterData;
 using SiPacul.Domain.Entities.Organizations;
 using SiPacul.Domain.Entities.Sales;
+using SiPacul.Domain.Entities.Evaluations;
 
 namespace SiPacul.Infrastructure.Data;
 
@@ -124,6 +125,9 @@ public sealed class SiPaculDbContext :
     public DbSet<ProfitSharingWaterfallResidualShareSnapshot>
         ProfitSharingWaterfallResidualShares =>
         Set<ProfitSharingWaterfallResidualShareSnapshot>();
+
+    public DbSet<SeasonReview> SeasonReviews =>
+        Set<SeasonReview>();
 
     public DbSet<Land> Lands =>
         Set<Land>();
