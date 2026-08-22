@@ -12,6 +12,7 @@ import { LandManagement } from "@/components/land-management";
 import { ProfitSharingManagement } from "@/components/profit-sharing-management";
 import { ReceivableManagement } from "@/components/receivable-management";
 import { SaleManagement } from "@/components/sale-management";
+import { SeasonHistoryManagement } from "@/components/season-history-management";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
 import { getRoleLabel, hasPermission, resolveSelectedMembership, setSelectedOrganizationId } from "@/lib/session/organization-selection";
@@ -50,7 +51,8 @@ type IconName =
   | "shield"
   | "check"
   | "trend"
-  | "wallet";
+  | "wallet"
+  | "history";
 
 type NavigationItem = {
   label: string;
@@ -68,6 +70,7 @@ const navigation: NavigationItem[] = [
   { label: "Penjualan", caption: "Transaksi hasil panen", permission: "sales.read", icon: "sales", path: "/sales" },
   { label: "Keuangan", caption: "Kas, piutang, dan biaya", permission: "finance.read", icon: "finance", path: "/finance" },
   { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: "/profit-sharing" },
+  { label: "Evaluasi", caption: "Histori lahan & musim", permission: "finance.read", icon: "history", path: "/evaluations/season-history" },
   { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team", path: null },
 ];
 
@@ -92,6 +95,7 @@ const iconPaths: Record<IconName, string> = {
   check: "m5 12 4 4L19 6",
   trend: "m4 17 5-5 4 4 7-8m-5 0h5v5",
   wallet: "M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12m4 7h-5a2 2 0 0 0 0 4h5",
+  history: "M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v6l4 2",
 };
 
 function AppIcon({ name }: { name: IconName }) {
@@ -303,7 +307,9 @@ export function DashboardShell() {
                 ? pathname.startsWith("/finance")
                 : item.path === "/profit-sharing"
                   ? pathname.startsWith("/profit-sharing")
-                : item.path === pathname;
+                  : item.path === "/evaluations/season-history"
+                    ? pathname.startsWith("/evaluations")
+                    : item.path === pathname;
             const isAvailable = item.path !== null;
 
             return (
@@ -478,6 +484,13 @@ export function DashboardShell() {
             />
           ) : pathname === "/profit-sharing" ? (
             <ProfitSharingManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/evaluations/season-history" ? (
+            <SeasonHistoryManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}
               organizationId={state.membership?.organizationId ?? null}

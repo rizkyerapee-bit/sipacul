@@ -40,6 +40,7 @@ import type {
   HarvestBatch,
   HarvestBatchFilter,
   Land,
+  LandSeasonHistory,
   LoginRequest,
   Organization,
   ProfitSharingSettlement,
@@ -56,6 +57,7 @@ import type {
   SalePayment,
   SalePaymentFilter,
   SaleReceivable,
+  SeasonHistoryFilter,
   StartCropCycleRequest,
   StartCultivationActivityRequest,
   UpdateCultivationActivityNotesRequest,
@@ -318,6 +320,28 @@ export function setLandPlotActive(
       `/lands/${encodeURIComponent(landId)}/plots/${encodeURIComponent(plotId)}/${isActive ? "activate" : "deactivate"}`,
     ),
     { method: "PATCH" },
+  );
+}
+
+export function getLandSeasonHistory(
+  organizationId: string,
+  landId: string,
+  filter: SeasonHistoryFilter = {},
+): Promise<LandSeasonHistory> {
+  const search = new URLSearchParams();
+  if (filter.landPlotId) search.set("landPlotId", filter.landPlotId);
+  if (filter.includeNonTerminal !== undefined) {
+    search.set("includeNonTerminal", String(filter.includeNonTerminal));
+  }
+  if (filter.page !== undefined) search.set("page", String(filter.page));
+  if (filter.pageSize !== undefined) search.set("pageSize", String(filter.pageSize));
+  const query = search.size > 0 ? `?${search.toString()}` : "";
+
+  return apiRequest<LandSeasonHistory>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/lands/${encodeURIComponent(landId)}/season-history${query}`,
+    ),
   );
 }
 

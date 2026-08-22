@@ -665,6 +665,94 @@ export type CapitalContributionFilter = {
 
 export type ProfitabilityOutcome = 1 | 2 | 3;
 
+export type SeasonEvaluationAttentionCode =
+  | 1 | 2 | 3 | 4 | 5 | 6 | 7
+  | 8 | 9 | 10 | 11 | 12 | 13 | 14;
+
+export type SeasonEvaluationAttentionSeverity = 1 | 2 | 3;
+
+export type SeasonEvaluationAttention = {
+  code: SeasonEvaluationAttentionCode;
+  severity: SeasonEvaluationAttentionSeverity;
+  value: number | null;
+};
+
+export type SeasonEvaluation = {
+  organizationId: string;
+  cropCycleId: string;
+  cropCycleCode: string;
+  cropCycleName: string;
+  landId: string;
+  landCode: string;
+  landName: string;
+  landPlotId: string;
+  landPlotCode: string;
+  landPlotName: string;
+  commodityId: string;
+  commodityCode: string;
+  commodityName: string;
+  cropCycleStatus: CropCycleStatus;
+  plannedStartDate: string;
+  expectedHarvestDate: string;
+  actualStartDate: string | null;
+  actualHarvestDate: string | null;
+  startVarianceDays: number | null;
+  harvestVarianceDays: number | null;
+  totalActivityCount: number;
+  completedActivityCount: number;
+  cancelledActivityCount: number;
+  pendingActivityCount: number;
+  issueActivityCount: number;
+  activityCompletionPercentage: number | null;
+  sopLinkedActivityCount: number;
+  sopCompliantActivityCount: number;
+  sopDeviatedActivityCount: number;
+  sopNotEvaluatedActivityCount: number;
+  sopCompliancePercentage: number | null;
+  confirmedHarvestBatchCount: number;
+  recognizedRevenue: number;
+  collectedRevenue: number;
+  outstandingReceivable: number;
+  totalCultivationCost: number;
+  netProfit: number;
+  profitMarginPercentage: number | null;
+  profitabilityOutcome: ProfitabilityOutcome;
+  capitalFundingGap: number;
+  isReadyForReview: boolean;
+  requiresAttention: boolean;
+  criticalAttentionCount: number;
+  warningAttentionCount: number;
+  informationAttentionCount: number;
+  attentions: SeasonEvaluationAttention[];
+  generatedAt: string;
+};
+
+export type LandSeasonHistory = {
+  organizationId: string;
+  landId: string;
+  landCode: string;
+  landName: string;
+  landPlotId: string | null;
+  landPlotCode: string | null;
+  landPlotName: string | null;
+  includeNonTerminal: boolean;
+  page: number;
+  pageSize: number;
+  totalSeasonCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+  seasons: SeasonEvaluation[];
+  generatedAt: string;
+};
+
+export type SeasonHistoryFilter = {
+  landPlotId?: string;
+  includeNonTerminal?: boolean;
+  page?: number;
+  pageSize?: number;
+};
+
 export type CropCycleProfitability = {
   organizationId: string;
   cropCycleId: string;

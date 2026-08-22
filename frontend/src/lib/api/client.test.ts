@@ -44,6 +44,7 @@ import {
   getCurrentUser,
   getHarvestBatches,
   getLands,
+  getLandSeasonHistory,
   getOrganization,
   getProfitSharingPreview,
   getProfitSharingScheme,
@@ -136,6 +137,28 @@ describe("SiPacul API client", () => {
     expect(fetchMock.mock.calls[1][0]).toBe("/api/v1/organizations/org%201/crop-cycles");
     expect(fetchMock.mock.calls[2][0]).toBe("/api/v1/organizations/org%201/commodities");
     expect(fetchMock.mock.calls[3][0]).toBe("/api/v1/organizations/org%201/cultivation-sops");
+  });
+
+  it("reads paged land season history with encoded filters", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({
+      landId: "land 1",
+      page: 2,
+      pageSize: 10,
+      seasons: [],
+    }));
+
+    await getLandSeasonHistory("org 1", "land 1", {
+      landPlotId: "plot 1",
+      includeNonTerminal: true,
+      page: 2,
+      pageSize: 10,
+    });
+
+    expect(fetchMock.mock.calls[0][0]).toBe(
+      "/api/v1/organizations/org%201/lands/land%201/season-history" +
+      "?landPlotId=plot+1&includeNonTerminal=true&page=2&pageSize=10",
+    );
+    expect((fetchMock.mock.calls[0][1] as RequestInit).method).toBeUndefined();
   });
 
   it("writes every crop-cycle transition through CSRF-protected encoded routes", async () => {
