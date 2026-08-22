@@ -12,6 +12,7 @@ using SiPacul.Api.Endpoints.Finance.SalePayments;
 using SiPacul.Api.Endpoints.Finance.CapitalContributions;
 using SiPacul.Api.Endpoints.Finance.Expenses;
 using SiPacul.Api.Endpoints.Evaluations.SeasonHistories;
+using SiPacul.Api.Endpoints.Evaluations.SeasonReviews;
 using SiPacul.Api.Endpoints.Sales;
 using SiPacul.Api.Endpoints.Harvests;
 using SiPacul.Api.Endpoints.Cultivation.Activities;
@@ -68,6 +69,7 @@ app.MapSalePaymentEndpoints();
 
 app.MapProfitabilityEndpoints();
 app.MapSeasonHistoryEndpoints();
+app.MapSeasonReviewEndpoints();
 
 app.MapProfitSharingSettlementEndpoints();
 app.MapProfitSharingSchemeEndpoints();
