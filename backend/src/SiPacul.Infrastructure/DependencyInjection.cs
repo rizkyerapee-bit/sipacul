@@ -1,4 +1,5 @@
 using SiPacul.Application.Security.Authorization.Services;
+using SiPacul.Application.Evaluations.SeasonHistories.Persistence;
 using SiPacul.Application.Security.Bootstrap.Services;
 using Microsoft.AspNetCore.Identity;
 using SiPacul.Application.Security.Authentication.Services;
@@ -165,6 +166,10 @@ public static class DependencyInjection
         services.AddScoped<
             IProfitabilityReadRepository,
             ProfitabilityReadRepository>();
+
+        services.AddScoped<
+            ISeasonHistoryReadRepository,
+            SeasonHistoryReadRepository>();
 
         services.AddScoped<
             IProfitSharingSettlementRepository,
