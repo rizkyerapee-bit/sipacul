@@ -1,5 +1,6 @@
 using SiPacul.Application.Finance.ProfitSharing.Services;
 using SiPacul.Application.Evaluations.SeasonHistories.Services;
+using SiPacul.Application.Evaluations.SeasonReviews.Services;
 using SiPacul.Application.Finance.ProfitSharing.Assignments.Services;
 using SiPacul.Application.Finance.ProfitSharing.Previews.Services;
 using SiPacul.Application.Finance.ProfitSharing.Schemes.Services;
@@ -103,6 +104,9 @@ public static class DependencyInjection
         services.AddScoped<
             ISeasonHistoryService,
             SeasonHistoryService>();
+        services.AddScoped<
+            ISeasonReviewService,
+            SeasonReviewService>();
 
         return services;
     }
