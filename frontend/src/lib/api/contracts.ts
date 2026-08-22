@@ -1143,3 +1143,29 @@ export type ApiProblem = {
   errors?: string[];
   [key: string]: unknown;
 };
+
+export type SeasonReviewStatus = 1 | 2;
+
+export type SeasonReview = {
+  id: string;
+  organizationId: string;
+  cropCycleId: string;
+  reviewDate: string;
+  findings: string;
+  lessonsLearned: string;
+  nextSeasonRecommendations: string;
+  status: SeasonReviewStatus;
+  finalizedAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CreateSeasonReviewRequest = {
+  cropCycleId: string;
+  reviewDate: string;
+  findings: string;
+  lessonsLearned: string;
+  nextSeasonRecommendations: string;
+};
+
+export type UpdateSeasonReviewRequest = Omit<CreateSeasonReviewRequest, "cropCycleId">;

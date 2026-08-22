@@ -1383,3 +1383,52 @@ export function voidProfitSharingWaterfallSettlement(
     { method: "PATCH", body: JSON.stringify(request) },
   );
 }
+
+export function createSeasonReview(
+  organizationId: string,
+  request: import("@/lib/api/contracts").CreateSeasonReviewRequest,
+): Promise<import("@/lib/api/contracts").SeasonReview> {
+  return csrfRequest(
+    getOrganizationResourcePath(organizationId, "/season-reviews"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function getSeasonReviewByCropCycle(
+  organizationId: string,
+  cropCycleId: string,
+): Promise<import("@/lib/api/contracts").SeasonReview> {
+  return apiRequest(
+    getOrganizationResourcePath(
+      organizationId,
+      `/season-reviews/by-crop-cycle/${encodeURIComponent(cropCycleId)}`,
+    ),
+  );
+}
+
+export function updateSeasonReview(
+  organizationId: string,
+  reviewId: string,
+  request: import("@/lib/api/contracts").UpdateSeasonReviewRequest,
+): Promise<import("@/lib/api/contracts").SeasonReview> {
+  return csrfRequest(
+    getOrganizationResourcePath(
+      organizationId,
+      `/season-reviews/${encodeURIComponent(reviewId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function finalizeSeasonReview(
+  organizationId: string,
+  reviewId: string,
+): Promise<import("@/lib/api/contracts").SeasonReview> {
+  return csrfRequest(
+    getOrganizationResourcePath(
+      organizationId,
+      `/season-reviews/${encodeURIComponent(reviewId)}/finalize`,
+    ),
+    { method: "PATCH" },
+  );
+}
