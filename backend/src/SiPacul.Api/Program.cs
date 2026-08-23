@@ -1,4 +1,5 @@
 using SiPacul.Api.Endpoints.Bootstrap;
+using SiPacul.Api.Health;
 using SiPacul.Api.Endpoints.Authentication;
 using SiPacul.Api.Security;
 using SiPacul.Api.Common.Http;
@@ -37,6 +38,8 @@ builder.Services.AddInfrastructure(
 
 builder.Services.AddSiPaculAuthentication();
 
+builder.Services.AddOperationalHealthChecks();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -49,6 +52,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+
+app.MapOperationalHealthEndpoints();
 
 app.MapBootstrapEndpoints();
 
