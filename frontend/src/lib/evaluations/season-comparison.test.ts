@@ -123,3 +123,35 @@ describe("season comparison model", () => {
     expect(comparison).toMatchObject({ sameCommodity: false, sameLandPlot: false });
   });
 });
+
+describe("season comparison interaction hardening", () => {
+  it("supports two through four choices and rejects a fifth until one is removed", () => {
+    const visible = ["one", "two", "three", "four", "five"].map((id) => season(id));
+    let selected: string[] = [];
+    for (const id of ["one", "two", "three", "four"]) {
+      selected = updateComparisonSelection(selected, id, visible).selectedIds;
+    }
+    expect(selected).toEqual(["one", "two", "three", "four"]);
+    expect(buildSeasonComparison(visible, selected)?.columns).toHaveLength(4);
+
+    const rejected = updateComparisonSelection(selected, "five", visible);
+    expect(rejected).toEqual({ selectedIds: selected, limitReached: true });
+
+    selected = updateComparisonSelection(selected, "two", visible).selectedIds;
+    selected = updateComparisonSelection(selected, "five", visible).selectedIds;
+    expect(selected).toEqual(["one", "three", "four", "five"]);
+  });
+
+  it("drops stale and nonterminal choices when the visible result set changes", () => {
+    const nextPage = [
+      season("three"),
+      season("active", { isReadyForReview: false }),
+    ];
+    const result = updateComparisonSelection(
+      ["one", "two", "active"],
+      "three",
+      nextPage,
+    );
+    expect(result).toEqual({ selectedIds: ["three"], limitReached: false });
+  });
+});
