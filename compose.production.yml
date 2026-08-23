@@ -1,0 +1,130 @@
+name: sipacul-production
+
+x-database-environment: &database-environment
+  ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:?POSTGRES_DB wajib diisi};Username=${POSTGRES_USER:?POSTGRES_USER wajib diisi};Password=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi};Include Error Detail=false"
+
+x-json-logging: &json-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:?POSTGRES_DB wajib diisi}"
+      POSTGRES_USER: "${POSTGRES_USER:?POSTGRES_USER wajib diisi}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD wajib diisi}"
+    volumes:
+      - sipacul_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - database
+    logging: *json-logging
+
+  migrator:
+    image: "${SIPACUL_MIGRATOR_IMAGE:-sipacul-migrator:local}"
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: migration
+    restart: "no"
+    environment:
+      <<: *database-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      Bootstrap__OwnerToken: "${SIPACUL_BOOTSTRAP_OWNER_TOKEN:?SIPACUL_BOOTSTRAP_OWNER_TOKEN wajib diisi}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - database
+      - update
+      - --no-build
+      - --configuration
+      - Release
+      - --project
+      - backend/src/SiPacul.Infrastructure/SiPacul.Infrastructure.csproj
+      - --startup-project
+      - backend/src/SiPacul.Api/SiPacul.Api.csproj
+    networks:
+      - database
+    logging: *json-logging
+
+  api:
+    image: "${SIPACUL_API_IMAGE:-sipacul-api:local}"
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: runtime
+    restart: unless-stopped
+    init: true
+    environment:
+      <<: *database-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      Bootstrap__OwnerToken: "${SIPACUL_BOOTSTRAP_OWNER_TOKEN:?SIPACUL_BOOTSTRAP_OWNER_TOKEN wajib diisi}"
+    volumes:
+      - sipacul_data_protection_keys:/home/app/.aspnet/DataProtection-Keys
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "--show-error",
+          "http://127.0.0.1:8080/health/ready"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - application
+      - database
+    logging: *json-logging
+
+  frontend:
+    image: "${SIPACUL_FRONTEND_IMAGE:-sipacul-frontend:local}"
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        SIPACUL_API_ORIGIN: http://api:8080
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${SIPACUL_BIND_ADDRESS:-127.0.0.1}:${SIPACUL_HTTP_PORT:-8080}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - application
+    logging: *json-logging
+
+volumes:
+  sipacul_postgres_data:
+  sipacul_data_protection_keys:
+
+networks:
+  application:
+  database:
+    internal: true

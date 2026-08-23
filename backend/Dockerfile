@@ -17,12 +17,18 @@ RUN dotnet publish backend/src/SiPacul.Api/SiPacul.Api.csproj \
     --output /app/publish \
     /p:UseAppHost=false
 
+FROM build AS migration
+RUN dotnet tool install --tool-path /tools dotnet-ef --version 10.0.10
+ENTRYPOINT ["/tools/dotnet-ef"]
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 USER root
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
+    && mkdir -p /home/app/.aspnet/DataProtection-Keys \
+    && chown -R $APP_UID:$APP_UID /home/app \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build --chown=$APP_UID:$APP_UID /app/publish ./
