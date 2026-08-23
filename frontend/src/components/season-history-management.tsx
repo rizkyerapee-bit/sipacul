@@ -22,7 +22,16 @@ import {
   profitabilityOutcomeLabels,
   summarizeSeasonPage,
 } from "@/lib/evaluations/season-history";
+import {
+  buildSeasonComparison,
+  maximumComparedSeasons,
+  updateComparisonSelection,
+} from "@/lib/evaluations/season-comparison";
 import styles from "./season-history-management.module.css";
+import {
+  SeasonComparisonPanel,
+  seasonComparisonSelectionClassNames,
+} from "./season-comparison-panel";
 import { SeasonReviewPanel } from "./season-review-panel";
 
 type Props = {
@@ -103,7 +112,7 @@ function PercentageBar({ value }: { value: number | null }) {
   );
 }
 
-function SeasonDetail({ season, organizationId, canReadReview, canWriteReview }: { season: SeasonEvaluation; organizationId: string; canReadReview: boolean; canWriteReview: boolean }) {
+function SeasonDetail({ season, organizationId, canReadReview, canWriteReview, comparisonSelected, comparisonDisabled, onToggleComparison }: { season: SeasonEvaluation; organizationId: string; canReadReview: boolean; canWriteReview: boolean; comparisonSelected: boolean; comparisonDisabled: boolean; onToggleComparison: () => void }) {
   return (
     <article className={styles.detailPanel}>
       <header className={styles.detailHeader}>
@@ -113,9 +122,21 @@ function SeasonDetail({ season, organizationId, canReadReview, canWriteReview }:
           <h2>{season.cropCycleName}</h2>
           <p>{season.landPlotCode} · {season.landPlotName}</p>
         </div>
-        <span className={`${styles.reviewBadge} ${season.isReadyForReview ? styles.reviewReady : styles.reviewPending}`}>
-          {season.isReadyForReview ? "Siap dievaluasi" : "Musim berjalan"}
-        </span>
+        <div className={seasonComparisonSelectionClassNames.actions}>
+          <span className={`${styles.reviewBadge} ${season.isReadyForReview ? styles.reviewReady : styles.reviewPending}`}>
+            {season.isReadyForReview ? "Siap dievaluasi" : "Musim berjalan"}
+          </span>
+          {season.isReadyForReview && (
+            <button
+              className={`${seasonComparisonSelectionClassNames.button} ${comparisonSelected ? seasonComparisonSelectionClassNames.selected : ""}`}
+              type="button"
+              disabled={comparisonDisabled}
+              onClick={onToggleComparison}
+            >
+              {comparisonSelected ? "Dipilih untuk dibandingkan" : "Tambahkan ke perbandingan"}
+            </button>
+          )}
+        </div>
       </header>
 
       <section className={styles.timelineSection} aria-label="Timeline musim">
@@ -193,6 +214,7 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
   const [pageSize, setPageSize] = useState(10);
   const [history, setHistory] = useState<LandSeasonHistory | null>(null);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | null>(null);
+  const [selectedComparisonIds, setSelectedComparisonIds] = useState<string[]>([]);
   const [isLoadingLands, setIsLoadingLands] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -216,6 +238,10 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
   const summary = useMemo(
     () => summarizeSeasonPage(history?.seasons ?? []),
     [history],
+  );
+  const comparison = useMemo(
+    () => buildSeasonComparison(history?.seasons ?? [], selectedComparisonIds),
+    [history, selectedComparisonIds],
   );
 
   useEffect(() => {
@@ -313,10 +339,10 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
       </header>
 
       <div className={styles.filterBar}>
-        <label><span>Lahan</span><select value={selectedLandId} disabled={isLoadingLands || lands.length === 0} onChange={(event) => { setSelectedLandId(event.target.value); setSelectedPlotId(""); setPage(1); setHistory(null); }}><option value="">Pilih lahan</option>{lands.map((land) => <option value={land.id} key={land.id}>{land.code} · {land.name}</option>)}</select></label>
-        <label><span>Petak</span><select value={selectedPlotId} disabled={!selectedLand || selectedLand.plots.length === 0} onChange={(event) => { setSelectedPlotId(event.target.value); setPage(1); }}><option value="">Semua petak</option>{selectedLand?.plots.toSorted((left, right) => left.name.localeCompare(right.name, "id-ID")).map((plot) => <option value={plot.id} key={plot.id}>{plot.code} · {plot.name}</option>)}</select></label>
-        <label><span>Data per halaman</span><select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}><option value={10}>10 musim</option><option value={20}>20 musim</option><option value={50}>50 musim</option></select></label>
-        <label className={styles.toggleField}><input type="checkbox" checked={includeNonTerminal} onChange={(event) => { setIncludeNonTerminal(event.target.checked); setPage(1); }} /><span><i /><b>Sertakan musim aktif</b><small>Terencana dan berjalan</small></span></label>
+        <label><span>Lahan</span><select value={selectedLandId} disabled={isLoadingLands || lands.length === 0} onChange={(event) => { setSelectedLandId(event.target.value); setSelectedPlotId(""); setPage(1); setHistory(null); setSelectedComparisonIds([]); }}><option value="">Pilih lahan</option>{lands.map((land) => <option value={land.id} key={land.id}>{land.code} · {land.name}</option>)}</select></label>
+        <label><span>Petak</span><select value={selectedPlotId} disabled={!selectedLand || selectedLand.plots.length === 0} onChange={(event) => { setSelectedPlotId(event.target.value); setPage(1); setSelectedComparisonIds([]); }}><option value="">Semua petak</option>{selectedLand?.plots.toSorted((left, right) => left.name.localeCompare(right.name, "id-ID")).map((plot) => <option value={plot.id} key={plot.id}>{plot.code} · {plot.name}</option>)}</select></label>
+        <label><span>Data per halaman</span><select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); setSelectedComparisonIds([]); }}><option value={10}>10 musim</option><option value={20}>20 musim</option><option value={50}>50 musim</option></select></label>
+        <label className={styles.toggleField}><input type="checkbox" checked={includeNonTerminal} onChange={(event) => { setIncludeNonTerminal(event.target.checked); setPage(1); setSelectedComparisonIds([]); }} /><span><i /><b>Sertakan musim aktif</b><small>Terencana dan berjalan</small></span></label>
       </div>
 
       {pageError && <div className={styles.pageError} role="alert"><Icon name="warning" /><span>{pageError}</span></div>}
@@ -334,6 +360,8 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
             <article className={summary.outstandingReceivable > 0 ? styles.metricWarning : ""}><span>Piutang pada halaman</span><strong>{formatSeasonCurrency(summary.outstandingReceivable)}</strong><small>Hanya musim yang sedang ditampilkan</small><i><Icon name="trend" /></i></article>
           </div>
 
+          <SeasonComparisonPanel comparison={comparison} selectedCount={selectedComparisonIds.length} onClear={() => setSelectedComparisonIds([])} />
+
           {history.seasons.length === 0 ? (
             <div className={styles.emptyState}><Icon name="history" /><h2>Belum ada musim yang cocok</h2><p>Coba pilih petak lain atau sertakan musim aktif. Histori formal hanya memuat siklus selesai dan dibatalkan.</p></div>
           ) : (
@@ -349,9 +377,17 @@ export function SeasonHistoryManagement({ organization, organizationId, permissi
                     </button>
                   ))}
                 </div>
-                <footer className={styles.pagination}><button type="button" disabled={!history.hasPreviousPage || isLoadingHistory} onClick={() => setPage((current) => Math.max(1, current - 1))}><Icon name="previous" /> Sebelumnya</button><span>Halaman <strong>{history.page}</strong> dari <strong>{Math.max(1, history.totalPages)}</strong></span><button type="button" disabled={!history.hasNextPage || isLoadingHistory} onClick={() => setPage((current) => current + 1)}>Berikutnya <Icon name="next" /></button></footer>
+                <footer className={styles.pagination}><button type="button" disabled={!history.hasPreviousPage || isLoadingHistory} onClick={() => { setPage((current) => Math.max(1, current - 1)); setSelectedComparisonIds([]); }}><Icon name="previous" /> Sebelumnya</button><span>Halaman <strong>{history.page}</strong> dari <strong>{Math.max(1, history.totalPages)}</strong></span><button type="button" disabled={!history.hasNextPage || isLoadingHistory} onClick={() => { setPage((current) => current + 1); setSelectedComparisonIds([]); }}>Berikutnya <Icon name="next" /></button></footer>
               </aside>
-              {selectedSeason && <SeasonDetail season={selectedSeason} organizationId={organizationId} canReadReview={canReadReview} canWriteReview={canWriteReview} />}
+              {selectedSeason && <SeasonDetail
+                season={selectedSeason}
+                organizationId={organizationId}
+                canReadReview={canReadReview}
+                canWriteReview={canWriteReview}
+                comparisonSelected={selectedComparisonIds.includes(selectedSeason.cropCycleId)}
+                comparisonDisabled={!selectedComparisonIds.includes(selectedSeason.cropCycleId) && selectedComparisonIds.length >= maximumComparedSeasons}
+                onToggleComparison={() => setSelectedComparisonIds((current) => updateComparisonSelection(current, selectedSeason.cropCycleId, history.seasons).selectedIds)}
+              />}
             </div>
           )}
         </>
