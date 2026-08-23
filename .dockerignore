@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.vscode
+**/bin
+**/obj
+**/node_modules
+**/.next
+**/coverage
+**/TestResults
+**/*.user
+**/*.suo
+**/*.log
+.env
+.env.*
+!.env.example
+!frontend/.env.example
