@@ -380,7 +380,8 @@ function Test-SiPaculBackupTaskContract {
         }
     }
     else {
-        if ($enabled -ne "true" -or [string]$task.State -eq "Disabled") {
+        # State CIM adalah sumber kebenaran; node Enabled dapat hilang atau tertinggal setelah transisi.
+        if ([string]$task.State -eq "Disabled") {
             $errors.Add("Task seharusnya enabled.")
         }
     }
