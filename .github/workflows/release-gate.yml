@@ -74,3 +74,17 @@ jobs:
       - name: Build frontend for production
         working-directory: frontend
         run: npm run build
+
+  container:
+    name: Container build and stack smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build images and smoke production stack
+        shell: pwsh
+        run: ./operations/Test-SiPaculContainerReleaseGate-PS51.ps1
