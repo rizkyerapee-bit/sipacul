@@ -36,6 +36,8 @@ jobs:
         run: dotnet restore backend/SiPacul.slnx
 
       - name: Test backend in Release
+        env:
+          ConnectionStrings__DefaultConnection: "Host=127.0.0.1;Port=1;Database=sipacul_ci;Username=sipacul_ci;Password=sipacul_ci;Timeout=1;Command Timeout=1;Pooling=false"
         run: dotnet test backend/SiPacul.slnx --configuration Release --no-restore --nologo
 
   frontend:

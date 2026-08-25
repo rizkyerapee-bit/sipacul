@@ -470,9 +470,10 @@ public sealed class ProfitSharingWaterfallCalculatorTests
 
         var investorRule =
             Assert.Single(
-                result.PriorityAllocations.Where(allocation =>
+                result.PriorityAllocations,
+                allocation =>
                     allocation.RuleCode ==
-                        "IMBAL-INVESTOR-A"));
+                        "IMBAL-INVESTOR-A");
 
         Assert.Equal(3_000_000m, investorRule.RequestedAmount);
         Assert.Equal(500_000m, investorRule.AllocatedAmount);
