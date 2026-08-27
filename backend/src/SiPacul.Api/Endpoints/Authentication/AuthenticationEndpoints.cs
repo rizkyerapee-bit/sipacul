@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using SiPacul.Api.Common.Http;
 using SiPacul.Api.Security;
+using SiPacul.Api.Security.RateLimiting;
 using SiPacul.Application.Security.Authentication;
 using SiPacul.Application.Security.Authentication.Contracts;
 using SiPacul.Application.Security.Authentication.Services;
@@ -29,8 +30,13 @@ public static class AuthenticationEndpoints
                 "/login",
                 LoginAsync)
             .AllowAnonymous()
+            .RequireRateLimiting(
+                SiPaculRateLimitingDefaults
+                    .AuthenticationPolicyName)
             .AddEndpointFilter<
-                AntiforgeryEndpointFilter>();
+                AntiforgeryEndpointFilter>()
+            .ProducesProblem(
+                StatusCodes.Status429TooManyRequests);
 
         group.MapPost(
                 "/logout",

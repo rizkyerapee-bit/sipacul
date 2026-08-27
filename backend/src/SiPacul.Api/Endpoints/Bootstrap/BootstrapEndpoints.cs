@@ -1,5 +1,6 @@
 using SiPacul.Api.Common.Http;
 using SiPacul.Api.Security;
+using SiPacul.Api.Security.RateLimiting;
 using SiPacul.Application.Security.Bootstrap;
 using SiPacul.Application.Security.Bootstrap.Contracts;
 using SiPacul.Application.Security.Bootstrap.Services;
@@ -30,6 +31,9 @@ public static class BootstrapEndpoints
                 "/owner",
                 BootstrapOwnerAsync)
             .AllowAnonymous()
+            .RequireRateLimiting(
+                SiPaculRateLimitingDefaults
+                    .BootstrapPolicyName)
             .AddEndpointFilter<
                 AntiforgeryEndpointFilter>()
             .Produces<FirstOwnerBootstrapResponse>(
@@ -40,6 +44,8 @@ public static class BootstrapEndpoints
                 StatusCodes.Status401Unauthorized)
             .ProducesProblem(
                 StatusCodes.Status409Conflict)
+            .ProducesProblem(
+                StatusCodes.Status429TooManyRequests)
             .ProducesProblem(
                 StatusCodes.Status500InternalServerError)
             .ProducesProblem(
