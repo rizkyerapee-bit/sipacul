@@ -27,9 +27,12 @@ batas global dipartisi menurut identifier user stabil, sedangkan login dan
 bootstrap selalu dipartisi menurut alamat IP untuk menahan percobaan berulang
 sebelum identitas dapat dipercaya.
 
-Stack produksi telah mengaktifkan forwarded headers. Reverse proxy hosting
-wajib meneruskan alamat client hanya dari proxy yang dipercaya dan tidak boleh
-membiarkan client langsung mencapai API. PostgreSQL dan API tetap tidak
+Sprint 20D2E mengganti forwarded headers otomatis dengan boundary proxy eksak.
+Default stack hanya memercayai loopback; alamat frontend Docker yang dinamis
+tidak dipercaya. Karena itu request anonim melalui frontend dipartisi menurut
+peer frontend internal dan spoofed `X-Forwarded-For` tidak dapat membuat bucket
+baru. Attribution client baru boleh diaktifkan setelah peer proxy final memiliki
+IP stabil dan menyanitasi header masuk. PostgreSQL dan API tetap tidak
 dipublikasikan ke host oleh `compose.production.yml`.
 
 ## Verifikasi

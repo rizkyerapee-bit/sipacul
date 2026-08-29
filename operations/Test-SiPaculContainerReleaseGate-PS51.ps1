@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 
-$Revision = "Sprint 20D2D Container Release Gate Rev4 - public security headers"
+$Revision = "Sprint 20D2E Container Release Gate Rev7 - pre-antiforgery spoof probe"
 $repoRoot = $null
 $gitCommand = $null
 $dockerCommand = $null
@@ -327,7 +327,7 @@ function Remove-TemporaryResources {
 }
 
 try {
-    Write-Host "=== PREFLIGHT SPRINT 20D2A CONTAINER RELEASE GATE ==="
+    Write-Host "=== PREFLIGHT SPRINT 20D2E CONTAINER RELEASE GATE ==="
 
     $gitCommand = Resolve-ExternalCommand @("git.exe", "git")
     $dockerCommand = Resolve-ExternalCommand @("docker.exe", "docker")
@@ -395,6 +395,7 @@ try {
         "SIPACUL_BOOTSTRAP_OWNER_TOKEN=$bootstrapToken",
         "SIPACUL_BIND_ADDRESS=127.0.0.1",
         "SIPACUL_HTTP_PORT=$httpPort",
+        "SIPACUL_TRUSTED_PROXY_IP=127.0.0.1",
         "SIPACUL_MIGRATOR_IMAGE=$migratorImage",
         "SIPACUL_API_IMAGE=$apiImage",
         "SIPACUL_FRONTEND_IMAGE=$frontendImage"
@@ -507,6 +508,104 @@ try {
             Fail "Route bootstrap mengembalikan status $($bootstrapResponse.StatusCode)."
         }
 
+        $apiEnvironmentJson = (Get-DockerOutput "Membaca environment API" @(
+            "inspect", "--format", "{{json .Config.Env}}", $serviceIds["api"]
+        ) | Select-Object -First 1).Trim()
+        try {
+            $parsedApiEnvironment = $apiEnvironmentJson | ConvertFrom-Json
+            $apiEnvironment = New-Object System.Collections.Generic.List[string]
+            foreach ($entry in $parsedApiEnvironment) {
+                $apiEnvironment.Add([string]$entry)
+            }
+        }
+        catch {
+            Fail "Environment API bukan JSON valid: $($_.Exception.Message)"
+        }
+        $automaticForwardingEntries = @($apiEnvironment | Where-Object {
+            ([string]$_).StartsWith(
+                "ASPNETCORE_FORWARDEDHEADERS_ENABLED=",
+                [StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($automaticForwardingEntries.Count -ne 0) {
+            Fail "API tidak boleh memakai ASPNETCORE_FORWARDEDHEADERS_ENABLED."
+        }
+        $knownProxyEntries = @($apiEnvironment | Where-Object {
+            ([string]$_).StartsWith(
+                "ForwardedHeaders__KnownProxies__0=",
+                [StringComparison]::Ordinal)
+        })
+        if ($knownProxyEntries.Count -ne 1 -or
+            [string]$knownProxyEntries[0] -cne
+                "ForwardedHeaders__KnownProxies__0=127.0.0.1") {
+            Fail "Container gate harus memakai trusted proxy loopback eksak."
+        }
+
+        $forwardedHeaderProbeScript = @'
+const loginUrl = "http://api:8080/api/v1/auth/login";
+const body = "{";
+
+async function attempt(forwardedFor) {
+  const response = await fetch(loginUrl, {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-for": forwardedFor,
+      "x-forwarded-proto": "https",
+    },
+    body,
+  });
+  await response.arrayBuffer();
+  return response.status;
+}
+
+(async () => {
+  const statuses = [];
+  for (let index = 0; index < 10; index += 1) {
+    statuses.push(await attempt("198.51.100.25"));
+  }
+  statuses.push(await attempt("203.0.113.25"));
+  process.stdout.write(JSON.stringify(statuses));
+})().catch((error) => {
+  console.error(error instanceof Error ? error.stack : String(error));
+  process.exit(1);
+});
+'@
+        $forwardedHeaderProbeOutput = @(
+            Get-ComposeStdinOutput `
+                "Menguji spoofed forwarded headers" `
+                $forwardedHeaderProbeScript `
+                @("exec", "--no-TTY", "frontend", "node", "-") |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        )
+        $forwardedHeaderProbeJson =
+            ($forwardedHeaderProbeOutput | Select-Object -Last 1).Trim()
+        try {
+            $parsedForwardedHeaderStatuses =
+                $forwardedHeaderProbeJson | ConvertFrom-Json
+            $forwardedHeaderStatuses =
+                New-Object System.Collections.Generic.List[int]
+            foreach ($status in $parsedForwardedHeaderStatuses) {
+                $forwardedHeaderStatuses.Add([int]$status)
+            }
+        }
+        catch {
+            Fail "Output probe forwarded headers bukan JSON valid: $($_.Exception.Message)"
+        }
+        if ($forwardedHeaderStatuses.Count -ne 11) {
+            Fail "Probe forwarded headers harus menghasilkan tepat 11 status."
+        }
+        for ($index = 0; $index -lt 10; $index++) {
+            if ([int]$forwardedHeaderStatuses[$index] -ne 400) {
+                Fail ("Percobaan login " + ($index + 1) +
+                    " harus 400; aktual " + $forwardedHeaderStatuses[$index] + ".")
+            }
+        }
+        if ([int]$forwardedHeaderStatuses[10] -ne 429) {
+            Fail ("Spoofed IP kedua harus tetap pada partisi yang dibatasi; " +
+                "status aktual " + $forwardedHeaderStatuses[10] + ".")
+        }
+
         $expectedSecurityHeaders = [ordered]@{
             "Content-Security-Policy" = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'"
             "Referrer-Policy" = "strict-origin-when-cross-origin"
@@ -554,7 +653,7 @@ try {
         Assert-Networks "API" $serviceIds["api"] @($applicationNetwork, $databaseNetwork)
         Assert-Networks "Frontend" $serviceIds["frontend"] @($applicationNetwork)
 
-        Write-Host "[OK] HTTP loopback, empat security header, migration $actualMigration, port, dan isolasi network tervalidasi."
+        Write-Host "[OK] HTTP loopback, empat security header, spoof resistance, migration $actualMigration, port, dan isolasi network tervalidasi."
     }
     catch {
         $mainFailure = $_.Exception.Message
@@ -618,7 +717,7 @@ try {
 
     Write-Host ""
     Write-Host "=== STATUS AKHIR CONTAINER RELEASE GATE ==="
-    Write-Host "[OK] Tiga image produksi, migration gate, health, HTTP security headers, port, dan network lulus."
+    Write-Host "[OK] Tiga image produksi, migration gate, health, security headers, forwarded-header trust boundary, port, dan network lulus."
     Write-Host "[OK] Resource sementara dibersihkan; stack produksi yang sudah ada tetap identik."
     Write-Host "[OK] HEAD dan status Git tidak berubah; tidak ada database produksi atau pengembangan yang disentuh."
 }

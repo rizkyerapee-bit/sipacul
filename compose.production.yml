@@ -72,7 +72,7 @@ services:
     environment:
       <<: *database-environment
       ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ForwardedHeaders__KnownProxies__0: "${SIPACUL_TRUSTED_PROXY_IP:-127.0.0.1}"
       Bootstrap__OwnerToken: "${SIPACUL_BOOTSTRAP_OWNER_TOKEN:?SIPACUL_BOOTSTRAP_OWNER_TOKEN wajib diisi}"
     volumes:
       - sipacul_data_protection_keys:/home/app/.aspnet/DataProtection-Keys

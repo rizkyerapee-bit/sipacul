@@ -2,6 +2,7 @@ using SiPacul.Api.Endpoints.Bootstrap;
 using SiPacul.Api.Health;
 using SiPacul.Api.Endpoints.Authentication;
 using SiPacul.Api.Security;
+using SiPacul.Api.Security.ForwardedHeaders;
 using SiPacul.Api.Security.RateLimiting;
 using SiPacul.Api.Common.Http;
 using SiPacul.Api.Endpoints.Finance.ProfitSharing;
@@ -39,6 +40,9 @@ builder.Services.AddInfrastructure(
 
 builder.Services.AddGlobalExceptionHandling();
 
+builder.Services.AddSiPaculForwardedHeaders(
+    builder.Configuration);
+
 builder.Services.AddSiPaculAuthentication();
 
 builder.Services.AddSiPaculRateLimiting();
@@ -53,6 +57,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
+
+app.UseForwardedHeaders();
 
 app.UseMiddleware<PublicResponseSecurityHeadersMiddleware>();
 
