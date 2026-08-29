@@ -20,10 +20,37 @@ function resolveApiOrigin(): string {
 
 const apiOrigin = resolveApiOrigin();
 
+const publicResponseSecurityHeaders = [
+  {
+    key: "Content-Security-Policy",
+    value: "base-uri 'self'; frame-ancestors 'none'; object-src 'none'",
+  },
+  {
+    key: "Referrer-Policy",
+    value: "strict-origin-when-cross-origin",
+  },
+  {
+    key: "X-Content-Type-Options",
+    value: "nosniff",
+  },
+  {
+    key: "X-Frame-Options",
+    value: "DENY",
+  },
+] as const;
+
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: publicResponseSecurityHeaders.map((header) => ({ ...header })),
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

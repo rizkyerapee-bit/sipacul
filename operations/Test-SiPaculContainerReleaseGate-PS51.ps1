@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 
-$Revision = "Sprint 20D2A Container Release Gate Rev3 - network JSON fix"
+$Revision = "Sprint 20D2D Container Release Gate Rev4 - public security headers"
 $repoRoot = $null
 $gitCommand = $null
 $dockerCommand = $null
@@ -216,6 +216,18 @@ function Assert-NoPublishedPort([string]$Service, [string]$ContainerId) {
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     if ($ports.Count -ne 0) {
         Fail "$Service tidak boleh memublikasikan port host."
+    }
+}
+
+function Assert-ResponseHeader(
+    [object]$Response,
+    [string]$Name,
+    [string]$ExpectedValue,
+    [string]$Route
+) {
+    $actualValue = [string]$Response.Headers[$Name]
+    if ($actualValue -cne $ExpectedValue) {
+        Fail "Header $Name pada $Route harus '$ExpectedValue'; aktual '$actualValue'."
     }
 }
 
@@ -495,6 +507,25 @@ try {
             Fail "Route bootstrap mengembalikan status $($bootstrapResponse.StatusCode)."
         }
 
+        $expectedSecurityHeaders = [ordered]@{
+            "Content-Security-Policy" = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'"
+            "Referrer-Policy" = "strict-origin-when-cross-origin"
+            "X-Content-Type-Options" = "nosniff"
+            "X-Frame-Options" = "DENY"
+        }
+        foreach ($routeResponse in @(
+            [pscustomobject]@{ Route = "/login"; Response = $loginResponse },
+            [pscustomobject]@{ Route = "/api/v1/bootstrap/status"; Response = $bootstrapResponse }
+        )) {
+            foreach ($headerName in $expectedSecurityHeaders.Keys) {
+                Assert-ResponseHeader `
+                    -Response $routeResponse.Response `
+                    -Name $headerName `
+                    -ExpectedValue ([string]$expectedSecurityHeaders[$headerName]) `
+                    -Route $routeResponse.Route
+            }
+        }
+
         $migrationQuery = 'SELECT "MigrationId" FROM "__EFMigrationsHistory" ORDER BY "MigrationId" DESC LIMIT 1;'
         $actualMigration = (Get-ComposeStdinOutput "Membaca migration database" $migrationQuery @(
             "exec", "--no-TTY", "postgres",
@@ -523,7 +554,7 @@ try {
         Assert-Networks "API" $serviceIds["api"] @($applicationNetwork, $databaseNetwork)
         Assert-Networks "Frontend" $serviceIds["frontend"] @($applicationNetwork)
 
-        Write-Host "[OK] HTTP loopback, migration $actualMigration, port, dan isolasi network tervalidasi."
+        Write-Host "[OK] HTTP loopback, empat security header, migration $actualMigration, port, dan isolasi network tervalidasi."
     }
     catch {
         $mainFailure = $_.Exception.Message
@@ -587,7 +618,7 @@ try {
 
     Write-Host ""
     Write-Host "=== STATUS AKHIR CONTAINER RELEASE GATE ==="
-    Write-Host "[OK] Tiga image produksi, migration gate, health, HTTP, port, dan network lulus."
+    Write-Host "[OK] Tiga image produksi, migration gate, health, HTTP security headers, port, dan network lulus."
     Write-Host "[OK] Resource sementara dibersihkan; stack produksi yang sudah ada tetap identik."
     Write-Host "[OK] HEAD dan status Git tidak berubah; tidak ada database produksi atau pengembangan yang disentuh."
 }

@@ -54,6 +54,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
+app.UseMiddleware<PublicResponseSecurityHeadersMiddleware>();
+
 app.UseHttpsRedirection();
 
 app.UseRouting();
