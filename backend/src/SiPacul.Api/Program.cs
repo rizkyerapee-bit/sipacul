@@ -37,6 +37,8 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(
     builder.Configuration);
 
+builder.Services.AddGlobalExceptionHandling();
+
 builder.Services.AddSiPaculAuthentication();
 
 builder.Services.AddSiPaculRateLimiting();
@@ -49,6 +51,8 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+
+app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
 
