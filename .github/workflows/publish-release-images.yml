@@ -1,0 +1,198 @@
+name: Publish release images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  packages: write
+
+concurrency:
+  group: publish-release-images-${{ github.sha }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  publish:
+    name: Publish immutable GHCR images
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require successful release gate for this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          api_url="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/workflows/release-gate.yml/runs?event=push&status=completed&head_sha=${GITHUB_SHA}&per_page=20"
+
+          response="$(
+            curl \
+              --fail \
+              --silent \
+              --show-error \
+              --location \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "${api_url}"
+          )"
+
+          successful_count="$(
+            printf '%s' "${response}" |
+              jq '[.workflow_runs[] | select(.head_sha == env.GITHUB_SHA and .conclusion == "success")] | length'
+          )"
+
+          if [ "${successful_count}" -lt 1 ]; then
+            echo "No successful Release gate push run exists for ${GITHUB_SHA}."
+            exit 1
+          fi
+
+          echo "Verified successful Release gate for ${GITHUB_SHA}."
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve immutable image references
+        id: refs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          tag="sha-${GITHUB_SHA}"
+
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          echo "migrator=${REGISTRY}/${owner}/sipacul-migrator" >> "${GITHUB_OUTPUT}"
+          echo "api=${REGISTRY}/${owner}/sipacul-api" >> "${GITHUB_OUTPUT}"
+          echo "frontend=${REGISTRY}/${owner}/sipacul-frontend" >> "${GITHUB_OUTPUT}"
+          echo "edge=${REGISTRY}/${owner}/sipacul-edge" >> "${GITHUB_OUTPUT}"
+
+      - name: Refuse to overwrite immutable SHA tags
+        shell: bash
+        env:
+          TAG: ${{ steps.refs.outputs.tag }}
+          MIGRATOR_IMAGE: ${{ steps.refs.outputs.migrator }}
+          API_IMAGE: ${{ steps.refs.outputs.api }}
+          FRONTEND_IMAGE: ${{ steps.refs.outputs.frontend }}
+          EDGE_IMAGE: ${{ steps.refs.outputs.edge }}
+        run: |
+          set -euo pipefail
+
+          for image in \
+            "${MIGRATOR_IMAGE}" \
+            "${API_IMAGE}" \
+            "${FRONTEND_IMAGE}" \
+            "${EDGE_IMAGE}"
+          do
+            ref="${image}:${TAG}"
+
+            if docker buildx imagetools inspect "${ref}" >/dev/null 2>&1; then
+              echo "Refusing to overwrite existing immutable image tag: ${ref}"
+              exit 1
+            fi
+          done
+
+          echo "All four immutable SHA tags are unused."
+
+      - name: Build and push migrator image
+        id: migrator
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: migration
+          push: true
+          tags: ${{ steps.refs.outputs.migrator }}:${{ steps.refs.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=SiPacul Migrator
+
+      - name: Build and push API image
+        id: api
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: runtime
+          push: true
+          tags: ${{ steps.refs.outputs.api }}:${{ steps.refs.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=SiPacul API
+
+      - name: Build and push frontend image
+        id: frontend
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          build-args: |
+            SIPACUL_API_ORIGIN=http://api:8080
+          tags: ${{ steps.refs.outputs.frontend }}:${{ steps.refs.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=SiPacul Frontend
+
+      - name: Build and push edge image
+        id: edge
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: edge/Dockerfile
+          push: true
+          tags: ${{ steps.refs.outputs.edge }}:${{ steps.refs.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=SiPacul Edge
+
+      - name: Write release image summary
+        shell: bash
+        env:
+          TAG: ${{ steps.refs.outputs.tag }}
+          MIGRATOR_IMAGE: ${{ steps.refs.outputs.migrator }}
+          API_IMAGE: ${{ steps.refs.outputs.api }}
+          FRONTEND_IMAGE: ${{ steps.refs.outputs.frontend }}
+          EDGE_IMAGE: ${{ steps.refs.outputs.edge }}
+          MIGRATOR_DIGEST: ${{ steps.migrator.outputs.digest }}
+          API_DIGEST: ${{ steps.api.outputs.digest }}
+          FRONTEND_DIGEST: ${{ steps.frontend.outputs.digest }}
+          EDGE_DIGEST: ${{ steps.edge.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "## SiPacul release images"
+            echo
+            echo "Source commit: \`${GITHUB_SHA}\`"
+            echo
+            echo "| Image | Immutable tag | Digest |"
+            echo "| --- | --- | --- |"
+            echo "| Migrator | \`${MIGRATOR_IMAGE}:${TAG}\` | \`${MIGRATOR_DIGEST}\` |"
+            echo "| API | \`${API_IMAGE}:${TAG}\` | \`${API_DIGEST}\` |"
+            echo "| Frontend | \`${FRONTEND_IMAGE}:${TAG}\` | \`${FRONTEND_DIGEST}\` |"
+            echo "| Edge | \`${EDGE_IMAGE}:${TAG}\` | \`${EDGE_DIGEST}\` |"
+          } >> "${GITHUB_STEP_SUMMARY}"
