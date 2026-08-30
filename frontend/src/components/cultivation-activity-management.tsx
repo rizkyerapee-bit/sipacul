@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   addCultivationActivityResource,
@@ -50,6 +50,11 @@ import {
   type ActivityTypeFilter,
   type ResourceDraft,
 } from "@/lib/cultivation/activity-management";
+import {
+  hasFormDraftChanged,
+  resolveFormCloseDecision,
+  type FormCloseSource,
+} from "@/lib/ui/form-data-loss";
 import styles from "./cultivation-activity-management.module.css";
 
 type Props = {
@@ -140,6 +145,7 @@ function ActivityEditor({
   cultivationSops,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
@@ -148,12 +154,18 @@ function ActivityEditor({
   cultivationSops: CultivationSop[];
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (request: CreateCultivationActivityRequest) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<ActivityDraft>(() => activityDraftFrom(activity));
+  const baselineDraft = useMemo(() => activityDraftFrom(activity), [activity]);
+  const [draft, setDraft] = useState<ActivityDraft>(() => baselineDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const isCreate = activity === null;
+
+  useEffect(() => {
+    onDirtyChange(hasFormDraftChanged(baselineDraft, draft));
+  }, [baselineDraft, draft, onDirtyChange]);
   const cycleSop = cultivationSops.find((item) => item.id === cycle.cultivationSopId) ?? null;
 
   function updateDraft<Key extends keyof ActivityDraft>(key: Key, value: ActivityDraft[Key]) {
@@ -208,6 +220,7 @@ function ResourceEditor({
   activity,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
@@ -215,12 +228,18 @@ function ResourceEditor({
   activity: CultivationActivity;
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (request: AddCultivationActivityResourceRequest) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<ResourceDraft>(() => resourceDraftFrom(resource));
+  const baselineDraft = useMemo(() => resourceDraftFrom(resource), [resource]);
+  const [draft, setDraft] = useState<ResourceDraft>(() => baselineDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const isCreate = resource === null;
+
+  useEffect(() => {
+    onDirtyChange(hasFormDraftChanged(baselineDraft, draft));
+  }, [baselineDraft, draft, onDirtyChange]);
   const quantity = parseDecimal(draft.quantity);
   const unitCost = parseDecimal(draft.unitCost, true);
 
@@ -271,6 +290,7 @@ function ActivityActionDialog({
   resource,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
@@ -279,18 +299,55 @@ function ActivityActionDialog({
   resource: CultivationActivityResource | null;
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (payload: string | CompleteCultivationActivityRequest | { notes: string | null; issueNotes: string | null }) => Promise<void>;
 }) {
-  const [date, setDate] = useState(localToday());
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState(activity.notes ?? "");
-  const [issueNotes, setIssueNotes] = useState(activity.issueNotes ?? "");
-  const [outcome, setOutcome] = useState(activity.outcome ?? "");
-  const [compliance, setCompliance] = useState<SopComplianceStatus>(activity.cultivationSopStepId ? 3 : 1);
-  const [deviationReason, setDeviationReason] = useState("");
+  const baseline = useMemo(() => ({
+    date: localToday(),
+    reason: "",
+    notes: activity.notes ?? "",
+    issueNotes: activity.issueNotes ?? "",
+    outcome: activity.outcome ?? "",
+    compliance: (activity.cultivationSopStepId ? 3 : 1) as SopComplianceStatus,
+    deviationReason: "",
+  }), [
+    activity.cultivationSopStepId,
+    activity.issueNotes,
+    activity.notes,
+    activity.outcome,
+  ]);
+  const [date, setDate] = useState(baseline.date);
+  const [reason, setReason] = useState(baseline.reason);
+  const [notes, setNotes] = useState(baseline.notes);
+  const [issueNotes, setIssueNotes] = useState(baseline.issueNotes);
+  const [outcome, setOutcome] = useState(baseline.outcome);
+  const [compliance, setCompliance] = useState<SopComplianceStatus>(baseline.compliance);
+  const [deviationReason, setDeviationReason] = useState(baseline.deviationReason);
   const [error, setError] = useState<string | null>(null);
   const isRemove = action.kind === "remove-resource";
+
+  useEffect(() => {
+    onDirtyChange(hasFormDraftChanged(baseline, {
+      date,
+      reason,
+      notes,
+      issueNotes,
+      outcome,
+      compliance,
+      deviationReason,
+    }));
+  }, [
+    baseline,
+    compliance,
+    date,
+    deviationReason,
+    issueNotes,
+    notes,
+    onDirtyChange,
+    outcome,
+    reason,
+  ]);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -351,6 +408,9 @@ export function CultivationActivityManagement({ organization, organizationId, pe
   const [typeFilter, setTypeFilter] = useState<ActivityTypeFilter>("all");
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [action, setAction] = useState<ActionState | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [actionDirty, setActionDirty] = useState(false);
+  const [discardTarget, setDiscardTarget] = useState<"editor" | "action" | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActivityLoading, setIsActivityLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -360,6 +420,62 @@ export function CultivationActivityManagement({ organization, organizationId, pe
   const [notice, setNotice] = useState<string | null>(null);
   const canRead = permissions.includes("cultivation.read");
   const canWrite = permissions.includes("cultivation.write");
+
+  const closeEditor = useCallback(() => {
+    setEditor(null);
+    setEditorDirty(false);
+    setDiscardTarget((current) => current === "editor" ? null : current);
+    setModalError(null);
+  }, []);
+
+  const closeAction = useCallback(() => {
+    setAction(null);
+    setActionDirty(false);
+    setDiscardTarget((current) => current === "action" ? null : current);
+    setModalError(null);
+  }, []);
+
+  const requestEditorClose = useCallback((source: FormCloseSource) => {
+    const decision = resolveFormCloseDecision({
+      source,
+      isDirty: editorDirty,
+      isSaving,
+    });
+
+    if (decision === "close") {
+      closeEditor();
+    } else if (decision === "confirm-discard") {
+      setDiscardTarget("editor");
+    }
+  }, [closeEditor, editorDirty, isSaving]);
+
+  const requestActionClose = useCallback((source: FormCloseSource) => {
+    const decision = resolveFormCloseDecision({
+      source,
+      isDirty: actionDirty,
+      isSaving,
+    });
+
+    if (decision === "close") {
+      closeAction();
+    } else if (decision === "confirm-discard") {
+      setDiscardTarget("action");
+    }
+  }, [actionDirty, closeAction, isSaving]);
+
+  const openEditor = useCallback((state: EditorState) => {
+    setModalError(null);
+    setEditorDirty(false);
+    setDiscardTarget(null);
+    setEditor(state);
+  }, []);
+
+  const openAction = useCallback((state: ActionState) => {
+    setModalError(null);
+    setActionDirty(false);
+    setDiscardTarget(null);
+    setAction(state);
+  }, []);
 
   const selectedCycle = cropCycles.find((item) => item.id === selectedCycleId) ?? null;
   const filteredActivities = useMemo(() => filterActivities(activities, query, statusFilter, typeFilter), [activities, query, statusFilter, typeFilter]);
@@ -409,13 +525,23 @@ export function CultivationActivityManagement({ organization, organizationId, pe
   }, [organizationId, selectedCycleId, canRead, router]);
 
   useEffect(() => {
-    if (!editor && !action) return;
+    if (!editor && !action && !discardTarget) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    function close(event: KeyboardEvent) { if (event.key === "Escape" && !isSaving) { setEditor(null); setAction(null); setModalError(null); } }
+    function close(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+
+      if (discardTarget) {
+        if (!isSaving) setDiscardTarget(null);
+        return;
+      }
+
+      if (editor) requestEditorClose("escape");
+      else if (action) requestActionClose("escape");
+    }
     window.addEventListener("keydown", close);
     return () => { document.body.style.overflow = originalOverflow; window.removeEventListener("keydown", close); };
-  }, [editor, action, isSaving]);
+  }, [action, discardTarget, editor, isSaving, requestActionClose, requestEditorClose]);
 
   async function refreshActivities() {
     if (!organizationId || !selectedCycleId) return;
@@ -441,7 +567,7 @@ export function CultivationActivityManagement({ organization, organizationId, pe
         ? await updateCultivationActivityPlan(organizationId, selectedCycle.id, editor.activityId, { name: request.name, activityType: request.activityType, plannedDate: request.plannedDate, notes: request.notes })
         : await createCultivationActivity(organizationId, selectedCycle.id, request);
       applyUpdatedActivity(updated, editor.activityId ? "Rencana aktivitas berhasil diperbarui." : "Aktivitas baru berhasil direncanakan.");
-      setEditor(null);
+      closeEditor();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) { router.replace("/login"); return; }
       setModalError(friendlyError(error));
@@ -456,7 +582,7 @@ export function CultivationActivityManagement({ organization, organizationId, pe
         ? await updateCultivationActivityResource(organizationId, selectedCycle.id, editor.activityId, editor.resourceId, { description: request.description, quantity: request.quantity, unit: request.unit, unitCost: request.unitCost, notes: request.notes })
         : await addCultivationActivityResource(organizationId, selectedCycle.id, editor.activityId, request);
       applyUpdatedActivity(updated, editor.resourceId ? "Sumber daya berhasil diperbarui." : "Sumber daya dan biaya berhasil ditambahkan.");
-      setEditor(null);
+      closeEditor();
     } catch (error) { setModalError(friendlyError(error)); }
     finally { setIsSaving(false); }
   }
@@ -473,7 +599,7 @@ export function CultivationActivityManagement({ organization, organizationId, pe
       else if (action.kind === "notes") { updated = await updateCultivationActivityNotes(organizationId, selectedCycle.id, action.activityId, payload as { notes: string | null; issueNotes: string | null }); message = "Catatan aktivitas berhasil diperbarui."; }
       else if (action.kind === "remove-resource") { updated = await removeCultivationActivityResource(organizationId, selectedCycle.id, action.activityId, action.resourceId); message = "Sumber daya dihapus dari biaya aktivitas."; }
       else { return; }
-      applyUpdatedActivity(updated, message); setAction(null);
+      applyUpdatedActivity(updated, message); closeAction();
     } catch (error) { setModalError(friendlyError(error)); }
     finally { setIsSaving(false); }
   }
@@ -491,7 +617,7 @@ export function CultivationActivityManagement({ organization, organizationId, pe
     <section className={styles.activityPage}>
       <div className={styles.hero}>
         <div><button className={styles.backButton} type="button" onClick={() => router.push("/cultivation")}><Icon name="arrow" /> Siklus Budidaya</button><span className={styles.eyebrow}>Pencatatan lapangan</span><h1>Aktivitas &amp; Sumber Daya</h1><p>Catat pekerjaan, bahan, tenaga kerja, alat, biaya, kendala, dan kepatuhan SOP {organization?.name ? `untuk ${organization.name}` : "organisasi aktif"}.</p></div>
-        <div className={styles.heroActions}>{!canWrite && <span className={styles.readOnlyBadge}>Mode baca</span>}<button className={styles.secondaryButton} type="button" disabled={isRefreshing || isLoading || !selectedCycleId} onClick={() => void refreshActivities()}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>{canWrite && isCycleMutable && <button className={styles.primaryButton} type="button" onClick={() => { setModalError(null); setEditor({ kind: "activity", activityId: null }); }}><Icon name="add" /> Rencanakan aktivitas</button>}</div>
+        <div className={styles.heroActions}>{!canWrite && <span className={styles.readOnlyBadge}>Mode baca</span>}<button className={styles.secondaryButton} type="button" disabled={isRefreshing || isLoading || !selectedCycleId} onClick={() => void refreshActivities()}><Icon name="refresh" /> {isRefreshing ? "Memuat..." : "Muat ulang"}</button>{canWrite && isCycleMutable && <button className={styles.primaryButton} type="button" onClick={() => openEditor({ kind: "activity", activityId: null })}><Icon name="add" /> Rencanakan aktivitas</button>}</div>
       </div>
 
       {notice && <div className={styles.notice} role="status"><span><Icon name="check" /></span><strong>{notice}</strong><button type="button" aria-label="Tutup pemberitahuan" onClick={() => setNotice(null)}><Icon name="close" /></button></div>}
@@ -504,28 +630,29 @@ export function CultivationActivityManagement({ organization, organizationId, pe
 
         <div className={styles.toolbar}><label className={styles.searchField}><Icon name="search" /><input value={query} aria-label="Cari aktivitas" placeholder="Cari kode, pekerjaan, jenis, atau langkah SOP" onChange={(event) => setQuery(event.target.value)} /></label><label className={styles.filterField}><span>Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value === "all" ? "all" : Number(event.target.value) as ActivityStatusFilter)}><option value="all">Semua status</option>{Object.entries(activityStatusLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><label className={styles.filterField}><span>Jenis</span><select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value === "all" ? "all" : Number(event.target.value) as ActivityTypeFilter)}><option value="all">Semua jenis</option>{Object.entries(activityTypeLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label><span className={styles.resultCount}>{filteredActivities.length} hasil</span></div>
 
-        {isActivityLoading ? <div className={styles.loadingState}><span className="loader" /><p>Memuat aktivitas budidaya...</p></div> : activities.length === 0 ? <div className={styles.emptyState}><span><Icon name="activity" /></span><h2>Belum ada aktivitas pada siklus ini</h2><p>Mulai dari pekerjaan persiapan lahan, penanaman, pemupukan, atau pemantauan.</p>{canWrite && isCycleMutable && <button className={styles.primaryButton} type="button" onClick={() => setEditor({ kind: "activity", activityId: null })}><Icon name="add" /> Rencanakan aktivitas pertama</button>}</div> : filteredActivities.length === 0 ? <div className={styles.emptyState}><span><Icon name="search" /></span><h2>Tidak ada hasil yang sesuai</h2><p>Ubah kata pencarian atau filter aktivitas.</p><button className={styles.secondaryButton} type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setTypeFilter("all"); }}>Bersihkan filter</button></div> : <div className={styles.managementGrid}>
+        {isActivityLoading ? <div className={styles.loadingState}><span className="loader" /><p>Memuat aktivitas budidaya...</p></div> : activities.length === 0 ? <div className={styles.emptyState}><span><Icon name="activity" /></span><h2>Belum ada aktivitas pada siklus ini</h2><p>Mulai dari pekerjaan persiapan lahan, penanaman, pemupukan, atau pemantauan.</p>{canWrite && isCycleMutable && <button className={styles.primaryButton} type="button" onClick={() => openEditor({ kind: "activity", activityId: null })}><Icon name="add" /> Rencanakan aktivitas pertama</button>}</div> : filteredActivities.length === 0 ? <div className={styles.emptyState}><span><Icon name="search" /></span><h2>Tidak ada hasil yang sesuai</h2><p>Ubah kata pencarian atau filter aktivitas.</p><button className={styles.secondaryButton} type="button" onClick={() => { setQuery(""); setStatusFilter("all"); setTypeFilter("all"); }}>Bersihkan filter</button></div> : <div className={styles.managementGrid}>
           <aside className={styles.activityList}><header><div><span className={styles.eyebrow}>Daftar pekerjaan</span><h2>{filteredActivities.length} aktivitas</h2></div></header><div className={styles.activityCards}>{filteredActivities.map((activity) => <button className={`${styles.activityCard} ${activity.id === selectedActivity?.id ? styles.activityCardSelected : ""}`} type="button" key={activity.id} aria-pressed={activity.id === selectedActivity?.id} onClick={() => setSelectedActivityId(activity.id)}><span className={styles.cardTopline}><strong>{activity.code}</strong><i className={`${styles.statusBadge} ${styles[`status${activity.status}`]}`}>{activityStatusLabels[activity.status]}</i></span><b>{activity.name}</b><span className={styles.cardType}><Icon name="activity" /> {activityTypeLabels[activity.activityType]}</span><span className={styles.cardMeta}><small>{formatActivityDate(activity.plannedDate)}</small><small>{formatCurrency(activity.totalActualCost)}</small></span></button>)}</div></aside>
 
           {selectedActivity && <article className={styles.activityDetail}>
-            <header className={styles.detailHeader}><div className={styles.detailIdentity}><span className={styles.detailIcon}><Icon name="activity" /></span><div><span>{selectedActivity.code}</span><h2>{selectedActivity.name}</h2><p>{activityTypeLabels[selectedActivity.activityType]}</p></div></div><div className={styles.detailActions}><span className={`${styles.statusBadge} ${styles[`status${selectedActivity.status}`]}`}>{activityStatusLabels[selectedActivity.status]}</span>{canWrite && selectedActivity.status === 1 && <><button className={styles.secondaryButton} type="button" onClick={() => { setModalError(null); setEditor({ kind: "activity", activityId: selectedActivity.id }); }}><Icon name="edit" /> Ubah</button><button className={styles.primaryButton} type="button" onClick={() => setAction({ kind: "start", activityId: selectedActivity.id })}><Icon name="start" /> Mulai</button></>}{canWrite && selectedActivity.status === 2 && <button className={styles.primaryButton} type="button" onClick={() => setAction({ kind: "complete", activityId: selectedActivity.id })}><Icon name="check" /> Selesaikan</button>}</div></header>
+            <header className={styles.detailHeader}><div className={styles.detailIdentity}><span className={styles.detailIcon}><Icon name="activity" /></span><div><span>{selectedActivity.code}</span><h2>{selectedActivity.name}</h2><p>{activityTypeLabels[selectedActivity.activityType]}</p></div></div><div className={styles.detailActions}><span className={`${styles.statusBadge} ${styles[`status${selectedActivity.status}`]}`}>{activityStatusLabels[selectedActivity.status]}</span>{canWrite && selectedActivity.status === 1 && <><button className={styles.secondaryButton} type="button" onClick={() => openEditor({ kind: "activity", activityId: selectedActivity.id })}><Icon name="edit" /> Ubah</button><button className={styles.primaryButton} type="button" onClick={() => openAction({ kind: "start", activityId: selectedActivity.id })}><Icon name="start" /> Mulai</button></>}{canWrite && selectedActivity.status === 2 && <button className={styles.primaryButton} type="button" onClick={() => openAction({ kind: "complete", activityId: selectedActivity.id })}><Icon name="check" /> Selesaikan</button>}</div></header>
 
             <div className={styles.timeline}><div className={styles.timelineActive}><span>1</span><strong>Rencana</strong><small>{formatActivityDate(selectedActivity.plannedDate)}</small></div><i /><div className={selectedActivity.status === 2 || selectedActivity.status === 3 ? styles.timelineActive : ""}><span>2</span><strong>Mulai</strong><small>{formatActivityDate(selectedActivity.actualStartDate)}</small></div><i /><div className={selectedActivity.status === 3 ? styles.timelineActive : ""}><span>3</span><strong>Selesai</strong><small>{formatActivityDate(selectedActivity.actualCompletionDate)}</small></div></div>
 
-            <section className={styles.detailSection}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Acuan kerja</span><h3>Rencana dan SOP</h3></div>{canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <button className={styles.textAction} type="button" onClick={() => setAction({ kind: "notes", activityId: selectedActivity.id })}><Icon name="notes" /> Catatan &amp; kendala</button>}</div><div className={styles.infoGrid}><div><small>Tanggal rencana</small><strong>{formatActivityDate(selectedActivity.plannedDate)}</strong><span>{selectedActivity.actualStartDate ? `Mulai ${formatActivityDate(selectedActivity.actualStartDate)}` : "Belum dimulai"}</span></div><div><small>Langkah SOP</small><strong>{selectedActivity.sopStepNameSnapshot ?? "Di luar SOP"}</strong><span>{selectedActivity.sopStepSequenceSnapshot ? `Langkah ${selectedActivity.sopStepSequenceSnapshot} · H+${selectedActivity.sopPlannedDayOffsetSnapshot}` : "Pekerjaan tambahan/korektif"}</span></div><div><small>Kepatuhan</small><strong>{complianceLabels[selectedActivity.sopComplianceStatus]}</strong><span>{selectedActivity.deviationReason ?? "Belum ada alasan deviasi"}</span></div><div><small>Biaya aktual</small><strong>{formatCurrency(selectedActivity.totalActualCost)}</strong><span>{selectedActivity.resources.length} baris sumber daya</span></div></div></section>
+            <section className={styles.detailSection}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Acuan kerja</span><h3>Rencana dan SOP</h3></div>{canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <button className={styles.textAction} type="button" onClick={() => openAction({ kind: "notes", activityId: selectedActivity.id })}><Icon name="notes" /> Catatan &amp; kendala</button>}</div><div className={styles.infoGrid}><div><small>Tanggal rencana</small><strong>{formatActivityDate(selectedActivity.plannedDate)}</strong><span>{selectedActivity.actualStartDate ? `Mulai ${formatActivityDate(selectedActivity.actualStartDate)}` : "Belum dimulai"}</span></div><div><small>Langkah SOP</small><strong>{selectedActivity.sopStepNameSnapshot ?? "Di luar SOP"}</strong><span>{selectedActivity.sopStepSequenceSnapshot ? `Langkah ${selectedActivity.sopStepSequenceSnapshot} · H+${selectedActivity.sopPlannedDayOffsetSnapshot}` : "Pekerjaan tambahan/korektif"}</span></div><div><small>Kepatuhan</small><strong>{complianceLabels[selectedActivity.sopComplianceStatus]}</strong><span>{selectedActivity.deviationReason ?? "Belum ada alasan deviasi"}</span></div><div><small>Biaya aktual</small><strong>{formatCurrency(selectedActivity.totalActualCost)}</strong><span>{selectedActivity.resources.length} baris sumber daya</span></div></div></section>
 
-            <section className={styles.detailSection}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Biaya lapangan</span><h3>Sumber daya terpakai</h3></div>{canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <button className={styles.primarySmallButton} type="button" onClick={() => { setModalError(null); setEditor({ kind: "resource", activityId: selectedActivity.id, resourceId: null }); }}><Icon name="add" /> Tambah sumber daya</button>}</div>{selectedActivity.resources.length === 0 ? <div className={styles.inlineEmpty}><Icon name="resource" /><span><strong>Belum ada sumber daya</strong><small>Catat bahan, tenaga kerja, alat, atau jasa yang digunakan.</small></span></div> : <div className={styles.resourceTable}><div className={styles.resourceHeader}><span>Sumber daya</span><span>Pemakaian</span><span>Biaya</span><span /></div>{selectedActivity.resources.map((resource) => <div className={styles.resourceRow} key={resource.id}><span><i>{resourceTypeLabels[resource.resourceType]}</i><strong>{resource.description}</strong><small>{resource.notes || "Tanpa catatan"}</small></span><span><strong>{formatQuantity(resource.quantity, resource.unit)}</strong><small>{formatCurrency(resource.unitCost)} / {resource.unit}</small></span><span><strong>{formatCurrency(resource.totalCost)}</strong></span><span>{canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <><button type="button" aria-label={`Ubah ${resource.description}`} onClick={() => setEditor({ kind: "resource", activityId: selectedActivity.id, resourceId: resource.id })}><Icon name="edit" /></button><button className={styles.deleteIconButton} type="button" aria-label={`Hapus ${resource.description}`} onClick={() => setAction({ kind: "remove-resource", activityId: selectedActivity.id, resourceId: resource.id })}><Icon name="trash" /></button></>}</span></div>)}</div>}</section>
+            <section className={styles.detailSection}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Biaya lapangan</span><h3>Sumber daya terpakai</h3></div>{canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <button className={styles.primarySmallButton} type="button" onClick={() => openEditor({ kind: "resource", activityId: selectedActivity.id, resourceId: null })}><Icon name="add" /> Tambah sumber daya</button>}</div>{selectedActivity.resources.length === 0 ? <div className={styles.inlineEmpty}><Icon name="resource" /><span><strong>Belum ada sumber daya</strong><small>Catat bahan, tenaga kerja, alat, atau jasa yang digunakan.</small></span></div> : <div className={styles.resourceTable}><div className={styles.resourceHeader}><span>Sumber daya</span><span>Pemakaian</span><span>Biaya</span><span /></div>{selectedActivity.resources.map((resource) => <div className={styles.resourceRow} key={resource.id}><span><i>{resourceTypeLabels[resource.resourceType]}</i><strong>{resource.description}</strong><small>{resource.notes || "Tanpa catatan"}</small></span><span><strong>{formatQuantity(resource.quantity, resource.unit)}</strong><small>{formatCurrency(resource.unitCost)} / {resource.unit}</small></span><span><strong>{formatCurrency(resource.totalCost)}</strong></span><span>{canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <><button type="button" aria-label={`Ubah ${resource.description}`} onClick={() => openEditor({ kind: "resource", activityId: selectedActivity.id, resourceId: resource.id })}><Icon name="edit" /></button><button className={styles.deleteIconButton} type="button" aria-label={`Hapus ${resource.description}`} onClick={() => openAction({ kind: "remove-resource", activityId: selectedActivity.id, resourceId: resource.id })}><Icon name="trash" /></button></>}</span></div>)}</div>}</section>
 
             <section className={styles.detailSection}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Catatan evaluasi</span><h3>Hasil dan kendala</h3></div></div><div className={styles.notesGrid}><div><span><Icon name="notes" /> Catatan</span><p>{selectedActivity.notes || "Belum ada catatan aktivitas."}</p></div><div className={selectedActivity.issueNotes ? styles.issueCard : ""}><span><Icon name="issue" /> Kendala lapangan</span><p>{selectedActivity.issueNotes || "Tidak ada kendala yang dicatat."}</p></div>{selectedActivity.status === 3 && <div className={styles.outcomeCard}><span><Icon name="check" /> Hasil pekerjaan</span><p>{selectedActivity.outcome || "Hasil belum dijelaskan."}</p></div>}{selectedActivity.status === 4 && <div className={styles.cancelCard}><span><Icon name="stop" /> Alasan pembatalan</span><p>{selectedActivity.cancellationReason}</p></div>}</div></section>
 
-            {canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <footer className={styles.detailFooter}><div><strong>Aktivitas tidak dilanjutkan?</strong><span>Simpan alasan pembatalan untuk histori dan evaluasi musim.</span></div><button className={styles.dangerTextButton} type="button" onClick={() => setAction({ kind: "cancel", activityId: selectedActivity.id })}><Icon name="stop" /> Batalkan aktivitas</button></footer>}
+            {canWrite && (selectedActivity.status === 1 || selectedActivity.status === 2) && <footer className={styles.detailFooter}><div><strong>Aktivitas tidak dilanjutkan?</strong><span>Simpan alasan pembatalan untuk histori dan evaluasi musim.</span></div><button className={styles.dangerTextButton} type="button" onClick={() => openAction({ kind: "cancel", activityId: selectedActivity.id })}><Icon name="stop" /> Batalkan aktivitas</button></footer>}
           </article>}
         </div>}
       </>}
 
-      {editor?.kind === "activity" && selectedCycle && (editor.activityId === null || modalActivity) && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditor(null); }}><div className={styles.modalPanel} role="dialog" aria-modal="true" aria-label={editor.activityId ? "Ubah aktivitas" : "Buat aktivitas"}><ActivityEditor key={editor.activityId ?? "new-activity"} activity={modalActivity} cycle={selectedCycle} cultivationSops={cultivationSops} isSaving={isSaving} apiError={modalError} onCancel={() => { setEditor(null); setModalError(null); }} onSubmit={submitActivity} /></div></div>}
-      {editor?.kind === "resource" && modalActivity && (editor.resourceId === null || modalResource) && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditor(null); }}><ResourceEditor key={editor.resourceId ?? "new-resource"} resource={modalResource} activity={modalActivity} isSaving={isSaving} apiError={modalError} onCancel={() => { setEditor(null); setModalError(null); }} onSubmit={submitResource} /></div>}
-      {action && modalActivity && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setAction(null); }}><ActivityActionDialog key={`${action.kind}-${modalActivity.id}`} action={action} activity={modalActivity} resource={modalResource} isSaving={isSaving} apiError={modalError} onCancel={() => { setAction(null); setModalError(null); }} onSubmit={submitAction} /></div>}
+      {editor?.kind === "activity" && selectedCycle && (editor.activityId === null || modalActivity) && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestEditorClose("backdrop"); }}><div className={styles.modalPanel} role="dialog" aria-modal="true" aria-label={editor.activityId ? "Ubah aktivitas" : "Buat aktivitas"}><ActivityEditor key={editor.activityId ?? "new-activity"} activity={modalActivity} cycle={selectedCycle} cultivationSops={cultivationSops} isSaving={isSaving} apiError={modalError} onDirtyChange={setEditorDirty} onCancel={() => requestEditorClose("explicit")} onSubmit={submitActivity} /></div></div>}
+      {editor?.kind === "resource" && modalActivity && (editor.resourceId === null || modalResource) && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestEditorClose("backdrop"); }}><ResourceEditor key={editor.resourceId ?? "new-resource"} resource={modalResource} activity={modalActivity} isSaving={isSaving} apiError={modalError} onDirtyChange={setEditorDirty} onCancel={() => requestEditorClose("explicit")} onSubmit={submitResource} /></div>}
+      {action && modalActivity && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) requestActionClose("backdrop"); }}><ActivityActionDialog key={`${action.kind}-${modalActivity.id}`} action={action} activity={modalActivity} resource={modalResource} isSaving={isSaving} apiError={modalError} onDirtyChange={setActionDirty} onCancel={() => requestActionClose("explicit")} onSubmit={submitAction} /></div>}
+      {discardTarget && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setDiscardTarget(null); }}><div className={styles.actionDialog} role="alertdialog" aria-modal="true" aria-labelledby="activity-discard-title" aria-describedby="activity-discard-description"><div className={styles.actionIcon}><Icon name="stop" /></div><span className={styles.eyebrow}>Perubahan belum disimpan</span><h2 id="activity-discard-title">Buang perubahan formulir?</h2><p id="activity-discard-description">Perubahan yang belum disimpan akan hilang. Pilih lanjut mengedit untuk kembali ke formulir.</p><div className={styles.actionButtons}><button className={styles.secondaryButton} type="button" disabled={isSaving} onClick={() => setDiscardTarget(null)}>Lanjut mengedit</button><button className={styles.dangerButton} type="button" disabled={isSaving} onClick={() => { if (discardTarget === "editor") closeEditor(); else closeAction(); }}>Buang perubahan</button></div></div></div>}
     </section>
   );
 }

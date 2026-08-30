@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ApiError,
@@ -38,6 +38,11 @@ import {
   type CropCycleStatusFilter,
   validateCropCycleDraft,
 } from "@/lib/cultivation/crop-cycle-management";
+import {
+  hasFormDraftChanged,
+  resolveFormCloseDecision,
+  type FormCloseSource,
+} from "@/lib/ui/form-data-loss";
 import styles from "./crop-cycle-management.module.css";
 
 type CropCycleManagementProps = {
@@ -149,6 +154,7 @@ function CycleEditor({
   lands,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
@@ -158,12 +164,18 @@ function CycleEditor({
   lands: Land[];
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (request: CreateCropCycleRequest) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<CropCycleDraft>(() => cropCycleDraftFrom(cycle));
+  const baselineDraft = useMemo(() => cropCycleDraftFrom(cycle), [cycle]);
+  const [draft, setDraft] = useState<CropCycleDraft>(() => baselineDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const isCreate = cycle === null;
+
+  useEffect(() => {
+    onDirtyChange(hasFormDraftChanged(baselineDraft, draft));
+  }, [baselineDraft, draft, onDirtyChange]);
   const selectedLand = lands.find((land) => land.id === draft.landId) ?? null;
   const selectedPlot = selectedLand?.plots.find((plot) => plot.id === draft.landPlotId) ?? null;
   const commodityOptions = commodities.filter((item) => item.isActive || item.id === cycle?.commodityId);
@@ -370,6 +382,7 @@ function CycleActionDialog({
   kind,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
@@ -377,12 +390,20 @@ function CycleActionDialog({
   kind: ActionKind;
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (value: string) => Promise<void>;
 }) {
-  const initialValue = kind === "notes" ? cycle.notes ?? "" : localToday();
+  const initialValue = useMemo(
+    () => kind === "notes" ? cycle.notes ?? "" : localToday(),
+    [cycle.notes, kind],
+  );
   const [value, setValue] = useState(initialValue);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    onDirtyChange(!Object.is(initialValue, value));
+  }, [initialValue, value, onDirtyChange]);
   const content = {
     start: {
       eyebrow: "Mulai pelaksanaan",
@@ -494,11 +515,56 @@ export function CropCycleManagement({
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [action, setAction] = useState<ActionState | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [actionDirty, setActionDirty] = useState(false);
+  const [discardTarget, setDiscardTarget] = useState<"editor" | "action" | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const canRead = permissions.includes("cultivation.read");
   const canWrite = permissions.includes("cultivation.write");
+
+  const closeEditor = useCallback(() => {
+    setEditor(null);
+    setEditorDirty(false);
+    setDiscardTarget((current) => current === "editor" ? null : current);
+    setModalError(null);
+  }, []);
+
+  const closeAction = useCallback(() => {
+    setAction(null);
+    setActionDirty(false);
+    setDiscardTarget((current) => current === "action" ? null : current);
+    setModalError(null);
+  }, []);
+
+  const requestEditorClose = useCallback((source: FormCloseSource) => {
+    const decision = resolveFormCloseDecision({
+      source,
+      isDirty: editorDirty,
+      isSaving,
+    });
+
+    if (decision === "close") {
+      closeEditor();
+    } else if (decision === "confirm-discard") {
+      setDiscardTarget("editor");
+    }
+  }, [closeEditor, editorDirty, isSaving]);
+
+  const requestActionClose = useCallback((source: FormCloseSource) => {
+    const decision = resolveFormCloseDecision({
+      source,
+      isDirty: actionDirty,
+      isSaving,
+    });
+
+    if (decision === "close") {
+      closeAction();
+    } else if (decision === "confirm-discard") {
+      setDiscardTarget("action");
+    }
+  }, [actionDirty, closeAction, isSaving]);
 
   async function loadData(refresh = false) {
     if (!organizationId || !canRead) {
@@ -584,17 +650,28 @@ export function CropCycleManagement({
   }, [organizationId, canRead, router]);
 
   useEffect(() => {
-    if (!editor && !action) {
+    if (!editor && !action && !discardTarget) {
       return;
     }
 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function closeWithEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isSaving) {
-        setEditor(null);
-        setAction(null);
-        setModalError(null);
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (discardTarget) {
+        if (!isSaving) {
+          setDiscardTarget(null);
+        }
+        return;
+      }
+
+      if (editor) {
+        requestEditorClose("escape");
+      } else if (action) {
+        requestActionClose("escape");
       }
     }
     window.addEventListener("keydown", closeWithEscape);
@@ -602,7 +679,14 @@ export function CropCycleManagement({
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", closeWithEscape);
     };
-  }, [editor, action, isSaving]);
+  }, [
+    action,
+    discardTarget,
+    editor,
+    isSaving,
+    requestActionClose,
+    requestEditorClose,
+  ]);
 
   const filteredCycles = useMemo(
     () => filterCropCycles(
@@ -664,7 +748,7 @@ export function CropCycleManagement({
           ? "Rencana budidaya berhasil diperbarui."
           : "Siklus budidaya baru berhasil direncanakan.",
       );
-      setEditor(null);
+      closeEditor();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         router.replace("/login");
@@ -718,7 +802,7 @@ export function CropCycleManagement({
       }
 
       applyUpdatedCycle(updatedCycle, successMessage);
-      setAction(null);
+      closeAction();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         router.replace("/login");
@@ -732,11 +816,15 @@ export function CropCycleManagement({
 
   function openEditor(state: EditorState) {
     setModalError(null);
+    setEditorDirty(false);
+    setDiscardTarget(null);
     setEditor(state);
   }
 
   function openAction(kind: ActionKind, cropCycleId: string) {
     setModalError(null);
+    setActionDirty(false);
+    setDiscardTarget(null);
     setAction({ kind, cropCycleId });
   }
 
@@ -960,7 +1048,11 @@ export function CropCycleManagement({
       )}
 
       {editor && (editor.mode === "create" || modalCycle) && (
-        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setEditor(null); }}>
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            requestEditorClose("backdrop");
+          }
+        }}>
           <div className={styles.modalPanel} role="dialog" aria-modal="true" aria-label={editor.mode === "create" ? "Buka siklus budidaya" : "Ubah rencana budidaya"}>
             <CycleEditor
               key={editor.mode === "create" ? "new-cycle" : modalCycle?.id}
@@ -970,7 +1062,8 @@ export function CropCycleManagement({
               lands={lands}
               isSaving={isSaving}
               apiError={modalError}
-              onCancel={() => { setEditor(null); setModalError(null); }}
+              onDirtyChange={setEditorDirty}
+              onCancel={() => requestEditorClose("explicit")}
               onSubmit={submitCycle}
             />
           </div>
@@ -978,16 +1071,40 @@ export function CropCycleManagement({
       )}
 
       {action && modalCycle && (
-        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSaving) setAction(null); }}>
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            requestActionClose("backdrop");
+          }
+        }}>
           <CycleActionDialog
             key={`${action.kind}-${modalCycle.id}`}
             cycle={modalCycle}
             kind={action.kind}
             isSaving={isSaving}
             apiError={modalError}
-            onCancel={() => { setAction(null); setModalError(null); }}
+            onDirtyChange={setActionDirty}
+            onCancel={() => requestActionClose("explicit")}
             onSubmit={submitAction}
           />
+        </div>
+      )}
+
+      {discardTarget && (
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !isSaving) {
+            setDiscardTarget(null);
+          }
+        }}>
+          <div className={styles.actionDialog} role="alertdialog" aria-modal="true" aria-labelledby="cultivation-discard-title" aria-describedby="cultivation-discard-description">
+            <div className={styles.actionIcon}><Icon name="stop" /></div>
+            <span className={styles.eyebrow}>Perubahan belum disimpan</span>
+            <h2 id="cultivation-discard-title">Buang perubahan formulir?</h2>
+            <p id="cultivation-discard-description">Perubahan yang belum disimpan akan hilang. Pilih lanjut mengedit untuk kembali ke formulir.</p>
+            <div className={styles.actionButtons}>
+              <button className={styles.secondaryButton} type="button" disabled={isSaving} onClick={() => setDiscardTarget(null)}>Lanjut mengedit</button>
+              <button className={styles.dangerButton} type="button" disabled={isSaving} onClick={() => { if (discardTarget === "editor") closeEditor(); else closeAction(); }}>Buang perubahan</button>
+            </div>
+          </div>
         </div>
       )}
     </section>

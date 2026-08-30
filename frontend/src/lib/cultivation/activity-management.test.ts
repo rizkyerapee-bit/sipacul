@@ -13,6 +13,7 @@ import {
   validateActivityDraft,
   validateResourceDraft,
 } from "@/lib/cultivation/activity-management";
+import { hasFormDraftChanged } from "@/lib/ui/form-data-loss";
 
 const cycle: CropCycle = {
   id: "cycle-1",
@@ -150,5 +151,23 @@ describe("cultivation activity helpers", () => {
       unit: "",
       unitCost: "-1",
     })).toHaveLength(4);
+  });
+
+
+  it("tracks dirty state for activity and resource drafts", () => {
+    const activityBaseline = activityDraftFrom(activity);
+    const resourceBaseline = resourceDraftFrom(null);
+
+    expect(hasFormDraftChanged(activityBaseline, { ...activityBaseline })).toBe(false);
+    expect(hasFormDraftChanged(activityBaseline, {
+      ...activityBaseline,
+      notes: "Kondisi lapangan berubah",
+    })).toBe(true);
+
+    expect(hasFormDraftChanged(resourceBaseline, { ...resourceBaseline })).toBe(false);
+    expect(hasFormDraftChanged(resourceBaseline, {
+      ...resourceBaseline,
+      description: "Pupuk tambahan",
+    })).toBe(true);
   });
 });

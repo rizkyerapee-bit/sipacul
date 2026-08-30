@@ -12,6 +12,7 @@ import {
   getPlannedDurationDays,
   validateCropCycleDraft,
 } from "@/lib/cultivation/crop-cycle-management";
+import { hasFormDraftChanged } from "@/lib/ui/form-data-loss";
 
 const commodity: Commodity = {
   id: "commodity-1",
@@ -168,5 +169,14 @@ describe("crop-cycle management helpers", () => {
       expect.stringContaining("SOP budidaya"),
       expect.stringContaining("Lahan"),
     ]));
+  });
+
+
+  it("tracks dirty state for cycle drafts and recognizes a reverted form", () => {
+    const baseline = cropCycleDraftFrom(cycle);
+
+    expect(hasFormDraftChanged(baseline, { ...baseline })).toBe(false);
+    expect(hasFormDraftChanged(baseline, { ...baseline, name: "Rencana diperbarui" })).toBe(true);
+    expect(hasFormDraftChanged(baseline, { ...baseline })).toBe(false);
   });
 });
