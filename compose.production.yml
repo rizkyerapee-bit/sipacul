@@ -125,6 +125,14 @@ services:
       dockerfile: edge/Dockerfile
     restart: unless-stopped
     init: true
+    environment:
+      NGINX_ENVSUBST_FILTER: "^SIPACUL_"
+      SIPACUL_PUBLIC_ACTIVATION: "${SIPACUL_PUBLIC_ACTIVATION:-disabled}"
+      SIPACUL_PUBLIC_HOSTNAME: "${SIPACUL_PUBLIC_HOSTNAME:-_}"
+      SIPACUL_HSTS_ENABLED: "${SIPACUL_HSTS_ENABLED:-false}"
+      SIPACUL_HSTS_MAX_AGE: "${SIPACUL_HSTS_MAX_AGE:-86400}"
+      SIPACUL_BIND_ADDRESS: "${SIPACUL_BIND_ADDRESS:-127.0.0.1}"
+      SIPACUL_HTTPS_PORT: "${SIPACUL_HTTPS_PORT:-8443}"
     ports:
       - "${SIPACUL_BIND_ADDRESS:-127.0.0.1}:${SIPACUL_HTTPS_PORT:-8443}:8443"
     volumes:
