@@ -28,12 +28,12 @@ bootstrap selalu dipartisi menurut alamat IP untuk menahan percobaan berulang
 sebelum identitas dapat dipercaya.
 
 Sprint 20D2E mengganti forwarded headers otomatis dengan boundary proxy eksak.
-Default stack hanya memercayai loopback; alamat frontend Docker yang dinamis
-tidak dipercaya. Karena itu request anonim melalui frontend dipartisi menurut
-peer frontend internal dan spoofed `X-Forwarded-For` tidak dapat membuat bucket
-baru. Attribution client baru boleh diaktifkan setelah peer proxy final memiliki
-IP stabil dan menyanitasi header masuk. PostgreSQL dan API tetap tidak
-dipublikasikan ke host oleh `compose.production.yml`.
+Sprint 20D2F kemudian menempatkan Nginx edge ber-IP stabil sebagai satu-satunya
+proxy yang dipercaya API. Edge mengganti `X-Forwarded-For` dengan alamat peer
+TLS dan tidak pernah meneruskan nilai client mentah. Karena itu request anonim
+dapat dipartisi menurut alamat yang telah melewati edge tanpa membuka bucket
+baru melalui spoofing. PostgreSQL, API, dan frontend tetap tidak dipublikasikan
+ke host oleh `compose.production.yml`.
 
 ## Verifikasi
 
@@ -55,4 +55,4 @@ melalui source, test, dan Release gate.
 
 Sprint 20D2B tidak menerbitkan image, membuat Git tag/Release, memilih hosting,
 mengubah database, atau memproses data bisnis. Registry, manifest RC, domain,
-TLS, serta deployment publik tetap menunggu keputusan hosting.
+sertifikat produksi, serta deployment publik tetap menunggu keputusan hosting.

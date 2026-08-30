@@ -26,18 +26,16 @@ ini, consumer hanya melihat alamat dan scheme yang telah melewati boundary.
 
 ## Default stack produksi
 
-`compose.production.yml` mengisi satu proxy eksak dari
-`SIPACUL_TRUSTED_PROXY_IP`. Nilai default dan template adalah `127.0.0.1`.
-Frontend container memakai alamat Docker dinamis sehingga sengaja belum
-dipercaya pada checkpoint yang tidak memilih hosting ini.
+Sprint 20D2F melengkapi boundary ini dengan Nginx edge ber-IP statis pada
+network application. `compose.production.yml` mengisi alamat yang sama melalui
+`SIPACUL_EDGE_IP` ke `ForwardedHeaders:KnownProxies` dan ke assignment network
+edge. Frontend tetap memakai alamat Docker dinamis, tidak memublikasikan port,
+dan tidak dipercaya API.
 
-Konsekuensinya, request API melalui frontend sementara dipartisi rate limiter
-menurut peer frontend internal, bukan nilai `X-Forwarded-For`. Ini konservatif:
-client tidak dapat memperoleh bucket login baru dengan mengganti header. Setelah
-topologi hosting final memiliki alamat peer yang stabil, isi
-`SIPACUL_TRUSTED_PROXY_IP` dengan representasi IP eksak yang benar-benar terlihat
-oleh `HttpContext.Connection.RemoteIpAddress`. Jangan memasukkan IP client,
-alamat bind, CIDR, atau nama host.
+Edge terminasi TLS, merutekan `/api/v1/*` langsung ke API, dan mengganti
+`X-Forwarded-For` serta `X-Forwarded-Proto` dari client. API menerima tepat satu
+hop yang peer-nya adalah edge. Jangan memasukkan IP client, alamat bind, CIDR,
+nama host, atau service lain ke daftar proxy tepercaya.
 
 Sebelum mengubah nilai produksi, pastikan proxy tersebut:
 
@@ -55,19 +53,22 @@ Test backend membuktikan default satu hop, penolakan mode cloud, validasi alamat
 proxy, pengabaian header dari peer tak dikenal, dan penerimaan header simetris
 dari proxy eksak.
 
-Container gate juga mengirim sepuluh percobaan login dari frontend dengan
-spoofed IP A, lalu percobaan ke-11 dengan spoofed IP B. Request terakhir wajib
-tetap menerima `429`. Jika header bebas dipercaya, IP B memperoleh partisi baru
+Setelah satu login bertoken valid memakai satu permit, container gate mengirim
+sembilan percobaan malformed login ke edge dengan spoofed IP A, lalu percobaan
+ke-11 keseluruhan dengan spoofed IP B. Request terakhir wajib tetap menerima
+`429`. Jika edge meneruskan header client mentah, IP B memperoleh partisi baru
 dan gate gagal.
 
-Setiap probe memakai malformed JSON agar sepuluh request pertama berhenti
-sebagai `400` pada body binding setelah rate limiter memperoleh permit, tetapi
-sebelum antiforgery memeriksa scheme HTTPS. Dengan demikian status probe tidak
-bergantung pada token atau cookie antiforgery.
+Kesembilan probe IP A memakai malformed JSON agar berhenti sebagai `400` pada
+body binding setelah rate limiter memperoleh permit. Probe IP B mencapai batas
+sebelum binding dan wajib `429`. Login pertama memakai token antiforgery valid
+dan wajib mencapai handler sebagai `401`, sehingga scheme HTTPS juga dibuktikan
+secara terpisah dari probe malformed.
 
 ## Batas checkpoint
 
-Sprint 20D2E tidak memilih reverse proxy atau hosting, tidak mengaktifkan HSTS,
-tidak menetapkan domain/TLS, tidak mengubah limiter terdistribusi, dan tidak
-mengubah database atau migration. Image, Git tag, GitHub Release, registry, dan
-deployment publik juga tetap di luar checkpoint ini.
+Sprint 20D2E sendiri tidak memilih reverse proxy atau hosting. Sprint 20D2F
+memilih Nginx sebagai edge stack tetapi tetap tidak menetapkan domain,
+sertifikat produksi, public bind, HSTS, atau limiter terdistribusi. Database,
+migration, GitHub Release, registry, dan deployment publik tetap di luar kedua
+checkpoint.

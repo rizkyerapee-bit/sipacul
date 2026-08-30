@@ -7,10 +7,11 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 
-$Revision = "Sprint 20D2E Container Release Gate Rev7 - pre-antiforgery spoof probe"
+$Revision = "Sprint 20D2F Container Release Gate Rev9 - curl HTTPS host probe"
 $repoRoot = $null
 $gitCommand = $null
 $dockerCommand = $null
+$curlCommand = $null
 $composeFile = $null
 $runtimeRoot = $null
 $envFile = $null
@@ -140,6 +141,117 @@ function Get-FreeLoopbackPort {
     }
 }
 
+function Get-TestHttpsStatusCode([string]$Uri) {
+    $discardPath = if ($env:OS -eq "Windows_NT") { "NUL" } else { "/dev/null" }
+    $output = @(Get-ExternalOutput `
+        "HTTPS loopback probe" `
+        $script:curlCommand `
+        @(
+            "--silent",
+            "--show-error",
+            "--fail",
+            "--insecure",
+            "--noproxy", "*",
+            "--connect-timeout", "10",
+            "--max-time", "20",
+            "--output", $discardPath,
+            "--write-out", "%{http_code}",
+            $Uri
+        ))
+    $statusText = (($output -join "`n").Trim())
+    if ($statusText -notmatch '^\d{3}$') {
+        Fail "Status HTTPS loopback tidak valid: $statusText"
+    }
+    return [int]$statusText
+}
+
+function Convert-Ipv4ToNumber([string]$Address) {
+    $parsed = $null
+    if (-not [Net.IPAddress]::TryParse($Address, [ref]$parsed) -or
+        $parsed.AddressFamily -ne
+            [Net.Sockets.AddressFamily]::InterNetwork) {
+        Fail "Alamat IPv4 tidak valid: $Address"
+    }
+
+    $bytes = $parsed.GetAddressBytes()
+    return [uint64]$bytes[0] * 16777216 +
+        [uint64]$bytes[1] * 65536 +
+        [uint64]$bytes[2] * 256 +
+        [uint64]$bytes[3]
+}
+
+function Get-Ipv4CidrRange([string]$Cidr) {
+    if ($Cidr -notmatch '^([^/]+)/(\d{1,2})$') {
+        return $null
+    }
+
+    $prefix = [int]$Matches[2]
+    if ($prefix -lt 0 -or $prefix -gt 32) {
+        return $null
+    }
+
+    try {
+        $address = Convert-Ipv4ToNumber $Matches[1]
+    }
+    catch {
+        return $null
+    }
+
+    $size = [uint64][Math]::Pow(2, 32 - $prefix)
+    $start = [uint64]([Math]::Floor($address / $size) * $size)
+    return [pscustomobject]@{
+        Start = $start
+        End = $start + $size - 1
+    }
+}
+
+function Get-FreeApplicationNetwork {
+    $networkIds = @(Get-DockerOutput "Inventaris Docker network" @(
+        "network", "ls", "--quiet"
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $existingRanges = New-Object System.Collections.Generic.List[object]
+
+    foreach ($networkId in $networkIds) {
+        $subnets = @(Get-DockerOutput "Membaca subnet Docker" @(
+            "network", "inspect", "--format",
+            '{{range .IPAM.Config}}{{println .Subnet}}{{end}}',
+            $networkId.Trim()
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+        foreach ($subnet in $subnets) {
+            $range = Get-Ipv4CidrRange $subnet.Trim()
+            if ($null -ne $range) {
+                $existingRanges.Add($range)
+            }
+        }
+    }
+
+    for ($attempt = 0; $attempt -lt 128; $attempt++) {
+        $second = Get-Random -Minimum 160 -Maximum 224
+        $third = Get-Random -Minimum 1 -Maximum 255
+        $subnet = "10.$second.$third.0/24"
+        $candidate = Get-Ipv4CidrRange $subnet
+        $overlaps = $false
+
+        foreach ($existing in $existingRanges) {
+            if ($candidate.Start -le $existing.End -and
+                $existing.Start -le $candidate.End) {
+                $overlaps = $true
+                break
+            }
+        }
+
+        if (-not $overlaps) {
+            return [pscustomobject]@{
+                Subnet = $subnet
+                EdgeIp = "10.$second.$third.10"
+            }
+        }
+    }
+
+    Fail "Tidak menemukan subnet private /24 yang bebas untuk container gate."
+}
+
 function Get-ProductionContainerFingerprint {
     $lines = @(Get-DockerOutput "Inventaris container produksi" @(
         "ps", "--all", "--no-trunc",
@@ -219,13 +331,19 @@ function Assert-NoPublishedPort([string]$Service, [string]$ContainerId) {
     }
 }
 
-function Assert-ResponseHeader(
-    [object]$Response,
+function Assert-HeaderValue(
+    [object]$Headers,
     [string]$Name,
     [string]$ExpectedValue,
     [string]$Route
 ) {
-    $actualValue = [string]$Response.Headers[$Name]
+    $property = $Headers.PSObject.Properties[$Name.ToLowerInvariant()]
+    $actualValue = if ($null -eq $property) {
+        ""
+    }
+    else {
+        [string]$property.Value
+    }
     if ($actualValue -cne $ExpectedValue) {
         Fail "Header $Name pada $Route harus '$ExpectedValue'; aktual '$actualValue'."
     }
@@ -308,7 +426,7 @@ function Remove-TemporaryResources {
                 [IO.Path]::AltDirectorySeparatorChar)
             $runtimeLeaf = [IO.Path]::GetFileName($runtimeFull)
             if ($runtimeParent -cne $tempRoot -or
-                -not $runtimeLeaf.StartsWith("SiPacul-20D2A-", [StringComparison]::Ordinal)) {
+                -not $runtimeLeaf.StartsWith("SiPacul-20D2F-", [StringComparison]::Ordinal)) {
                 $errors.Add("Folder runtime tidak memenuhi kontrak cleanup aman: $runtimeFull")
             }
             else {
@@ -327,10 +445,11 @@ function Remove-TemporaryResources {
 }
 
 try {
-    Write-Host "=== PREFLIGHT SPRINT 20D2E CONTAINER RELEASE GATE ==="
+    Write-Host "=== PREFLIGHT SPRINT 20D2F CONTAINER RELEASE GATE ==="
 
     $gitCommand = Resolve-ExternalCommand @("git.exe", "git")
     $dockerCommand = Resolve-ExternalCommand @("docker.exe", "docker")
+    $curlCommand = Resolve-ExternalCommand @("curl.exe", "curl")
 
     $repoRoot = (Run-Git @("rev-parse", "--show-toplevel") | Select-Object -First 1).Trim()
     $repoRoot = [IO.Path]::GetFullPath($repoRoot)
@@ -345,11 +464,20 @@ try {
     $composeFile = Join-Path $repoRoot "compose.production.yml"
     $backendDockerfile = Join-Path (Join-Path $repoRoot "backend") "Dockerfile"
     $frontendDockerfile = Join-Path (Join-Path $repoRoot "frontend") "Dockerfile"
+    $edgeDockerfile = Join-Path (Join-Path $repoRoot "edge") "Dockerfile"
+    $edgeConfiguration = Join-Path (Join-Path $repoRoot "edge") "default.conf"
     $infrastructureRoot = Join-Path `
         (Join-Path (Join-Path $repoRoot "backend") "src") `
         "SiPacul.Infrastructure"
     $migrationRoot = Join-Path (Join-Path $infrastructureRoot "Data") "Migrations"
-    foreach ($path in @($composeFile, $backendDockerfile, $frontendDockerfile, $migrationRoot)) {
+    foreach ($path in @(
+        $composeFile,
+        $backendDockerfile,
+        $frontendDockerfile,
+        $edgeDockerfile,
+        $edgeConfiguration,
+        $migrationRoot
+    )) {
         if (-not (Test-Path -LiteralPath $path)) {
             Fail "Input container gate tidak ditemukan: $path"
         }
@@ -375,16 +503,29 @@ try {
 
     $suffix = [Guid]::NewGuid().ToString("N").Substring(0, 12)
     $shortHead = $gitHeadBefore.Substring(0, 7).ToLowerInvariant()
-    $composeProject = "sipacul20d2a$suffix"
-    $runtimeRoot = Join-Path ([IO.Path]::GetTempPath()) "SiPacul-20D2A-$suffix"
+    $composeProject = "sipacul20d2f$suffix"
+    $runtimeRoot = Join-Path ([IO.Path]::GetTempPath()) "SiPacul-20D2F-$suffix"
     [IO.Directory]::CreateDirectory($runtimeRoot) | Out-Null
     $envFile = Join-Path $runtimeRoot "release-gate.env"
-    $httpPort = Get-FreeLoopbackPort
+    $tlsRoot = Join-Path $runtimeRoot "tls"
+    [IO.Directory]::CreateDirectory($tlsRoot) | Out-Null
+    $tlsCertificatePath = Join-Path $tlsRoot "tls.crt"
+    $tlsPrivateKeyPath = Join-Path $tlsRoot "tls.key"
+    $dockerTlsRoot = [IO.Path]::GetFullPath($tlsRoot).Replace("\", "/")
+    $dockerTlsCertificatePath = [IO.Path]::GetFullPath(
+        $tlsCertificatePath).Replace("\", "/")
+    $dockerTlsPrivateKeyPath = [IO.Path]::GetFullPath(
+        $tlsPrivateKeyPath).Replace("\", "/")
+    $httpsPort = Get-FreeLoopbackPort
+    $applicationNetworkConfiguration = Get-FreeApplicationNetwork
+    $applicationSubnet = $applicationNetworkConfiguration.Subnet
+    $edgeIp = $applicationNetworkConfiguration.EdgeIp
 
-    $migratorImage = "sipacul-migrator:20d2a-$shortHead-$suffix"
-    $apiImage = "sipacul-api:20d2a-$shortHead-$suffix"
-    $frontendImage = "sipacul-frontend:20d2a-$shortHead-$suffix"
-    $imageTags = @($migratorImage, $apiImage, $frontendImage)
+    $migratorImage = "sipacul-migrator:20d2f-$shortHead-$suffix"
+    $apiImage = "sipacul-api:20d2f-$shortHead-$suffix"
+    $frontendImage = "sipacul-frontend:20d2f-$shortHead-$suffix"
+    $edgeImage = "sipacul-edge:20d2f-$shortHead-$suffix"
+    $imageTags = @($migratorImage, $apiImage, $frontendImage, $edgeImage)
 
     $databasePassword = [Guid]::NewGuid().ToString("N") + [Guid]::NewGuid().ToString("N")
     $bootstrapToken = [Guid]::NewGuid().ToString("N") + [Guid]::NewGuid().ToString("N")
@@ -394,11 +535,15 @@ try {
         "POSTGRES_PASSWORD=$databasePassword",
         "SIPACUL_BOOTSTRAP_OWNER_TOKEN=$bootstrapToken",
         "SIPACUL_BIND_ADDRESS=127.0.0.1",
-        "SIPACUL_HTTP_PORT=$httpPort",
-        "SIPACUL_TRUSTED_PROXY_IP=127.0.0.1",
+        "SIPACUL_HTTPS_PORT=$httpsPort",
+        "SIPACUL_APPLICATION_SUBNET=$applicationSubnet",
+        "SIPACUL_EDGE_IP=$edgeIp",
+        "SIPACUL_TLS_CERTIFICATE_PATH=$dockerTlsCertificatePath",
+        "SIPACUL_TLS_PRIVATE_KEY_PATH=$dockerTlsPrivateKeyPath",
         "SIPACUL_MIGRATOR_IMAGE=$migratorImage",
         "SIPACUL_API_IMAGE=$apiImage",
-        "SIPACUL_FRONTEND_IMAGE=$frontendImage"
+        "SIPACUL_FRONTEND_IMAGE=$frontendImage",
+        "SIPACUL_EDGE_IMAGE=$edgeImage"
     )
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [IO.File]::WriteAllText($envFile, (($envLines -join "`n") + "`n"), $utf8NoBom)
@@ -406,8 +551,9 @@ try {
     Write-Host "[OK] Repository/HEAD: $repoRoot / $shortHead"
     Write-Host "[OK] Script revision: $Revision"
     Write-Host "[OK] Docker $dockerVersion; Compose $composeVersion; migration terakhir $expectedMigration."
-    Write-Host "[OK] Stack sementara: $composeProject pada loopback port $httpPort."
-    Write-Host "[OK] Rahasia runtime dibuat di folder sementara dan tidak dicetak."
+    Write-Host "[OK] Stack sementara: $composeProject pada HTTPS loopback port $httpsPort."
+    Write-Host "[OK] Network application sementara: $applicationSubnet; edge eksak: $edgeIp."
+    Write-Host "[OK] Rahasia dan path TLS runtime dibuat di folder sementara dan tidak dicetak."
 
     $mainFailure = $null
     try {
@@ -421,7 +567,8 @@ try {
             "postgres:17-alpine",
             $migratorImage,
             $apiImage,
-            $frontendImage
+            $frontendImage,
+            $edgeImage
         ) | Sort-Object
         if (($configuredImages -join "`n") -cne ($expectedImages -join "`n")) {
             Fail ("Image efektif Compose tidak cocok:`n" + ($configuredImages -join "`n"))
@@ -432,7 +579,21 @@ try {
                 Fail "Image hasil build tidak ditemukan: $imageTag"
             }
         }
-        Write-Host "[OK] Image migrator, API, dan frontend dibangun dengan tag terisolasi."
+        $tlsMount = "type=bind,source=$dockerTlsRoot,target=/tls"
+        Invoke-Docker "Membuat sertifikat TLS sementara" @(
+            "run", "--rm", "--user", "0:0",
+            "--entrypoint", "/bin/sh",
+            "--mount", $tlsMount,
+            $edgeImage,
+            "-c",
+            "umask 022; openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost,IP:127.0.0.1 -keyout /tls/tls.key -out /tls/tls.crt >/dev/null 2>&1; chmod 0444 /tls/tls.key /tls/tls.crt"
+        )
+        foreach ($tlsPath in @($tlsCertificatePath, $tlsPrivateKeyPath)) {
+            if (-not (Test-Path -LiteralPath $tlsPath -PathType Leaf)) {
+                Fail "Artefak TLS sementara tidak terbentuk: $tlsPath"
+            }
+        }
+        Write-Host "[OK] Empat image produksi dibangun; sertifikat TLS sementara siap."
 
         Write-Host ""
         Write-Host "=== STARTUP STACK SEMENTARA ==="
@@ -442,7 +603,7 @@ try {
         $serviceIds = @{}
         $ready = $false
         while ([DateTimeOffset]::UtcNow -lt $deadline) {
-            foreach ($service in @("postgres", "migrator", "api", "frontend")) {
+            foreach ($service in @("postgres", "migrator", "api", "frontend", "edge")) {
                 if (-not $serviceIds.ContainsKey($service)) {
                     $id = Get-ServiceContainerId $service
                     if (-not [string]::IsNullOrWhiteSpace($id)) {
@@ -451,18 +612,20 @@ try {
                 }
             }
 
-            if ($serviceIds.Count -eq 4) {
+            if ($serviceIds.Count -eq 5) {
                 $postgresState = Get-ContainerState $serviceIds["postgres"]
                 $migratorState = Get-ContainerState $serviceIds["migrator"]
                 $apiState = Get-ContainerState $serviceIds["api"]
                 $frontendState = Get-ContainerState $serviceIds["frontend"]
+                $edgeState = Get-ContainerState $serviceIds["edge"]
 
                 if ($migratorState.Status -eq "exited" -and $migratorState.ExitCode -ne 0) {
                     Fail "Migrator berhenti dengan exit code $($migratorState.ExitCode)."
                 }
                 foreach ($runtimeService in @(
                     [pscustomobject]@{ Name = "api"; State = $apiState },
-                    [pscustomobject]@{ Name = "frontend"; State = $frontendState }
+                    [pscustomobject]@{ Name = "frontend"; State = $frontendState },
+                    [pscustomobject]@{ Name = "edge"; State = $edgeState }
                 )) {
                     if ($runtimeService.State.Status -eq "exited") {
                         Fail "$($runtimeService.Name) berhenti dengan exit code $($runtimeService.State.ExitCode)."
@@ -477,7 +640,9 @@ try {
                     $apiState.Status -eq "running" -and
                     $apiState.Health -eq "healthy" -and
                     $frontendState.Status -eq "running" -and
-                    $frontendState.Health -eq "healthy")
+                    $frontendState.Health -eq "healthy" -and
+                    $edgeState.Status -eq "running" -and
+                    $edgeState.Health -eq "healthy")
                 if ($ready) {
                     break
                 }
@@ -487,25 +652,209 @@ try {
         if (-not $ready) {
             Fail "Stack belum sehat dalam $StartupTimeoutSeconds detik."
         }
-        Write-Host "[OK] PostgreSQL sehat, migrator sukses, API dan frontend sehat."
+        Write-Host "[OK] PostgreSQL sehat, migrator sukses, API, frontend, dan edge TLS sehat."
 
         Write-Host ""
         Write-Host "=== VERIFIKASI RUNTIME ==="
-        $loginResponse = Invoke-WebRequest `
-            -Uri "http://127.0.0.1:$httpPort/login" `
-            -Method Get `
-            -TimeoutSec 20 `
-            -UseBasicParsing
-        if ([int]$loginResponse.StatusCode -ne 200) {
-            Fail "Route /login mengembalikan status $($loginResponse.StatusCode)."
+        $hostLoginStatus = Get-TestHttpsStatusCode `
+            "https://127.0.0.1:$httpsPort/login"
+        if ($hostLoginStatus -ne 200) {
+            Fail ("HTTPS loopback /login harus 200; aktual " +
+                $hostLoginStatus + ".")
         }
-        $bootstrapResponse = Invoke-WebRequest `
-            -Uri "http://127.0.0.1:$httpPort/api/v1/bootstrap/status" `
-            -Method Get `
-            -TimeoutSec 20 `
-            -UseBasicParsing
-        if ([int]$bootstrapResponse.StatusCode -ne 200) {
-            Fail "Route bootstrap mengembalikan status $($bootstrapResponse.StatusCode)."
+        $runtimeProbeScript = @'
+const baseUrl = "https://edge:8443";
+const securityHeaderNames = [
+  "content-security-policy",
+  "referrer-policy",
+  "x-content-type-options",
+  "x-frame-options",
+];
+
+function selectedHeaders(response) {
+  return Object.fromEntries(
+    securityHeaderNames.map((name) => [name, response.headers.get(name) ?? ""]),
+  );
+}
+
+async function consume(response) {
+  await response.arrayBuffer();
+  return response;
+}
+
+async function malformedLogin(forwardedFor) {
+  const response = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/json",
+      "x-forwarded-for": forwardedFor,
+      "x-forwarded-proto": "http",
+    },
+    body: "{",
+  });
+  await response.arrayBuffer();
+  return response.status;
+}
+
+(async () => {
+  const loginPage = await consume(await fetch(`${baseUrl}/login`));
+  const bootstrap = await consume(
+    await fetch(`${baseUrl}/api/v1/bootstrap/status`),
+  );
+  const csrfResponse = await fetch(`${baseUrl}/api/v1/auth/csrf`, {
+    headers: {
+      "x-forwarded-for": "198.51.100.200",
+      "x-forwarded-proto": "http",
+    },
+  });
+  const csrfBody = await csrfResponse.json();
+  const setCookies = typeof csrfResponse.headers.getSetCookie === "function"
+    ? csrfResponse.headers.getSetCookie()
+    : [csrfResponse.headers.get("set-cookie")].filter(Boolean);
+  if (setCookies.length === 0) {
+    throw new Error("Antiforgery cookie tidak ditemukan.");
+  }
+  const cookieHeader = setCookies
+    .map((value) => value.split(";", 1)[0])
+    .join("; ");
+  const loginResponse = await fetch(`${baseUrl}/api/v1/auth/login`, {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "content-type": "application/json",
+      "cookie": cookieHeader,
+      "x-forwarded-for": "198.51.100.200",
+      "x-forwarded-proto": "http",
+      [csrfBody.headerName]: csrfBody.requestToken,
+    },
+    body: JSON.stringify({
+      email: "missing@example.invalid",
+      password: "InvalidPassword!123",
+      rememberMe: false,
+    }),
+  });
+  await loginResponse.arrayBuffer();
+
+  const spoofStatuses = [];
+  for (let index = 0; index < 9; index += 1) {
+    spoofStatuses.push(await malformedLogin("198.51.100.25"));
+  }
+  spoofStatuses.push(await malformedLogin("203.0.113.25"));
+
+  process.stdout.write(JSON.stringify({
+    loginPageStatus: loginPage.status,
+    loginPageHeaders: selectedHeaders(loginPage),
+    bootstrapStatus: bootstrap.status,
+    bootstrapHeaders: selectedHeaders(bootstrap),
+    csrfStatus: csrfResponse.status,
+    csrfCookie: setCookies.join("\n"),
+    loginStatus: loginResponse.status,
+    spoofStatuses,
+  }));
+})().catch((error) => {
+  console.error(error instanceof Error ? error.stack : String(error));
+  process.exit(1);
+});
+'@
+        $runtimeProbeOutput = @(
+            Get-ComposeStdinOutput `
+                "Menguji jalur TLS edge" `
+                $runtimeProbeScript `
+                @(
+                    "exec", "--no-TTY",
+                    "--env", "NODE_TLS_REJECT_UNAUTHORIZED=0",
+                    "--env", "NODE_NO_WARNINGS=1",
+                    "frontend", "node", "-"
+                ) |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        )
+        $runtimeProbeJson =
+            ($runtimeProbeOutput | Select-Object -Last 1).Trim()
+        try {
+            $runtimeProbe = $runtimeProbeJson | ConvertFrom-Json
+        }
+        catch {
+            Fail "Output probe TLS edge bukan JSON valid: $($_.Exception.Message)"
+        }
+
+        foreach ($statusProbe in @(
+            [pscustomobject]@{
+                Name = "/login"
+                Actual = [int]$runtimeProbe.loginPageStatus
+                Expected = 200
+            },
+            [pscustomobject]@{
+                Name = "/api/v1/bootstrap/status"
+                Actual = [int]$runtimeProbe.bootstrapStatus
+                Expected = 200
+            },
+            [pscustomobject]@{
+                Name = "/api/v1/auth/csrf"
+                Actual = [int]$runtimeProbe.csrfStatus
+                Expected = 200
+            },
+            [pscustomobject]@{
+                Name = "login dengan antiforgery valid"
+                Actual = [int]$runtimeProbe.loginStatus
+                Expected = 401
+            }
+        )) {
+            if ($statusProbe.Actual -ne $statusProbe.Expected) {
+                Fail ("Status " + $statusProbe.Name + " harus " +
+                    $statusProbe.Expected + "; aktual " + $statusProbe.Actual + ".")
+            }
+        }
+
+        $csrfCookie = [string]$runtimeProbe.csrfCookie
+        foreach ($cookieMarker in @("Secure", "HttpOnly", "SameSite=Lax")) {
+            if ($csrfCookie -notmatch
+                ("(?i)(^|;\s*)" + [regex]::Escape($cookieMarker) + "(;|$)")) {
+                Fail "Cookie antiforgery harus memuat atribut $cookieMarker."
+            }
+        }
+
+        $forwardedHeaderStatuses = @(
+            $runtimeProbe.spoofStatuses |
+                ForEach-Object { [int]$_ }
+        )
+        if ($forwardedHeaderStatuses.Count -ne 10) {
+            Fail "Probe forwarded headers harus menghasilkan tepat 10 status."
+        }
+        for ($index = 0; $index -lt 9; $index++) {
+            if ([int]$forwardedHeaderStatuses[$index] -ne 400) {
+                Fail ("Percobaan malformed login " + ($index + 1) +
+                    " harus 400; aktual " + $forwardedHeaderStatuses[$index] + ".")
+            }
+        }
+        if ([int]$forwardedHeaderStatuses[9] -ne 429) {
+            Fail ("Spoofed IP kedua harus tetap pada partisi edge yang dibatasi; " +
+                "status aktual " + $forwardedHeaderStatuses[9] + ".")
+        }
+
+        $expectedSecurityHeaders = [ordered]@{
+            "Content-Security-Policy" = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'"
+            "Referrer-Policy" = "strict-origin-when-cross-origin"
+            "X-Content-Type-Options" = "nosniff"
+            "X-Frame-Options" = "DENY"
+        }
+        foreach ($routeProbe in @(
+            [pscustomobject]@{
+                Route = "/login"
+                Headers = $runtimeProbe.loginPageHeaders
+            },
+            [pscustomobject]@{
+                Route = "/api/v1/bootstrap/status"
+                Headers = $runtimeProbe.bootstrapHeaders
+            }
+        )) {
+            foreach ($headerName in $expectedSecurityHeaders.Keys) {
+                Assert-HeaderValue `
+                    -Headers $routeProbe.Headers `
+                    -Name $headerName `
+                    -ExpectedValue ([string]$expectedSecurityHeaders[$headerName]) `
+                    -Route $routeProbe.Route
+            }
         }
 
         $apiEnvironmentJson = (Get-DockerOutput "Membaca environment API" @(
@@ -536,93 +885,29 @@ try {
         })
         if ($knownProxyEntries.Count -ne 1 -or
             [string]$knownProxyEntries[0] -cne
-                "ForwardedHeaders__KnownProxies__0=127.0.0.1") {
-            Fail "Container gate harus memakai trusted proxy loopback eksak."
+                "ForwardedHeaders__KnownProxies__0=$edgeIp") {
+            Fail "API harus memercayai tepat IP edge sementara $edgeIp."
         }
 
-        $forwardedHeaderProbeScript = @'
-const loginUrl = "http://api:8080/api/v1/auth/login";
-const body = "{";
-
-async function attempt(forwardedFor) {
-  const response = await fetch(loginUrl, {
-    method: "POST",
-    redirect: "manual",
-    headers: {
-      "content-type": "application/json",
-      "x-forwarded-for": forwardedFor,
-      "x-forwarded-proto": "https",
-    },
-    body,
-  });
-  await response.arrayBuffer();
-  return response.status;
-}
-
-(async () => {
-  const statuses = [];
-  for (let index = 0; index < 10; index += 1) {
-    statuses.push(await attempt("198.51.100.25"));
-  }
-  statuses.push(await attempt("203.0.113.25"));
-  process.stdout.write(JSON.stringify(statuses));
-})().catch((error) => {
-  console.error(error instanceof Error ? error.stack : String(error));
-  process.exit(1);
-});
-'@
-        $forwardedHeaderProbeOutput = @(
-            Get-ComposeStdinOutput `
-                "Menguji spoofed forwarded headers" `
-                $forwardedHeaderProbeScript `
-                @("exec", "--no-TTY", "frontend", "node", "-") |
-                Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-        )
-        $forwardedHeaderProbeJson =
-            ($forwardedHeaderProbeOutput | Select-Object -Last 1).Trim()
+        $applicationNetwork = "${composeProject}_application"
+        $edgeNetworkJson = (Get-DockerOutput "Membaca IP edge" @(
+            "inspect", "--format", "{{json .NetworkSettings.Networks}}",
+            $serviceIds["edge"]
+        ) | Select-Object -First 1).Trim()
         try {
-            $parsedForwardedHeaderStatuses =
-                $forwardedHeaderProbeJson | ConvertFrom-Json
-            $forwardedHeaderStatuses =
-                New-Object System.Collections.Generic.List[int]
-            foreach ($status in $parsedForwardedHeaderStatuses) {
-                $forwardedHeaderStatuses.Add([int]$status)
+            $edgeNetworks = $edgeNetworkJson | ConvertFrom-Json
+            $edgeNetworkProperty =
+                $edgeNetworks.PSObject.Properties[$applicationNetwork]
+            if ($null -eq $edgeNetworkProperty) {
+                Fail "Edge tidak terhubung ke network application."
             }
+            $actualEdgeIp = [string]$edgeNetworkProperty.Value.IPAddress
         }
         catch {
-            Fail "Output probe forwarded headers bukan JSON valid: $($_.Exception.Message)"
+            Fail "Network edge bukan JSON valid: $($_.Exception.Message)"
         }
-        if ($forwardedHeaderStatuses.Count -ne 11) {
-            Fail "Probe forwarded headers harus menghasilkan tepat 11 status."
-        }
-        for ($index = 0; $index -lt 10; $index++) {
-            if ([int]$forwardedHeaderStatuses[$index] -ne 400) {
-                Fail ("Percobaan login " + ($index + 1) +
-                    " harus 400; aktual " + $forwardedHeaderStatuses[$index] + ".")
-            }
-        }
-        if ([int]$forwardedHeaderStatuses[10] -ne 429) {
-            Fail ("Spoofed IP kedua harus tetap pada partisi yang dibatasi; " +
-                "status aktual " + $forwardedHeaderStatuses[10] + ".")
-        }
-
-        $expectedSecurityHeaders = [ordered]@{
-            "Content-Security-Policy" = "base-uri 'self'; frame-ancestors 'none'; object-src 'none'"
-            "Referrer-Policy" = "strict-origin-when-cross-origin"
-            "X-Content-Type-Options" = "nosniff"
-            "X-Frame-Options" = "DENY"
-        }
-        foreach ($routeResponse in @(
-            [pscustomobject]@{ Route = "/login"; Response = $loginResponse },
-            [pscustomobject]@{ Route = "/api/v1/bootstrap/status"; Response = $bootstrapResponse }
-        )) {
-            foreach ($headerName in $expectedSecurityHeaders.Keys) {
-                Assert-ResponseHeader `
-                    -Response $routeResponse.Response `
-                    -Name $headerName `
-                    -ExpectedValue ([string]$expectedSecurityHeaders[$headerName]) `
-                    -Route $routeResponse.Route
-            }
+        if ($actualEdgeIp -cne $edgeIp) {
+            Fail "IP edge harus $edgeIp; aktual $actualEdgeIp."
         }
 
         $migrationQuery = 'SELECT "MigrationId" FROM "__EFMigrationsHistory" ORDER BY "MigrationId" DESC LIMIT 1;'
@@ -638,12 +923,14 @@ async function attempt(forwardedFor) {
         Assert-NoPublishedPort "PostgreSQL" $serviceIds["postgres"]
         Assert-NoPublishedPort "Migrator" $serviceIds["migrator"]
         Assert-NoPublishedPort "API" $serviceIds["api"]
-        $frontendPorts = @(Get-DockerOutput "Membaca port frontend" @(
-            "port", $serviceIds["frontend"], "3000/tcp"
+        Assert-NoPublishedPort "Frontend" $serviceIds["frontend"]
+        $edgePorts = @(Get-DockerOutput "Membaca port edge" @(
+            "port", $serviceIds["edge"], "8443/tcp"
         ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        if ($frontendPorts.Count -ne 1 -or
-            $frontendPorts[0].Trim() -ne "127.0.0.1:$httpPort") {
-            Fail ("Port frontend bukan tepat 127.0.0.1:$httpPort. Aktual: " + ($frontendPorts -join ", "))
+        if ($edgePorts.Count -ne 1 -or
+            $edgePorts[0].Trim() -ne "127.0.0.1:$httpsPort") {
+            Fail ("Port edge bukan tepat 127.0.0.1:$httpsPort. Aktual: " +
+                ($edgePorts -join ", "))
         }
 
         $applicationNetwork = "${composeProject}_application"
@@ -652,8 +939,9 @@ async function attempt(forwardedFor) {
         Assert-Networks "Migrator" $serviceIds["migrator"] @($databaseNetwork)
         Assert-Networks "API" $serviceIds["api"] @($applicationNetwork, $databaseNetwork)
         Assert-Networks "Frontend" $serviceIds["frontend"] @($applicationNetwork)
+        Assert-Networks "Edge" $serviceIds["edge"] @($applicationNetwork)
 
-        Write-Host "[OK] HTTP loopback, empat security header, spoof resistance, migration $actualMigration, port, dan isolasi network tervalidasi."
+        Write-Host "[OK] HTTPS edge, antiforgery/login, empat security header, sanitasi spoof, migration $actualMigration, port, dan network tervalidasi."
     }
     catch {
         $mainFailure = $_.Exception.Message
@@ -665,7 +953,7 @@ async function attempt(forwardedFor) {
         $cleanupAttempted = $true
         $cleanupFailure = Remove-TemporaryResources
         if ([string]::IsNullOrWhiteSpace($cleanupFailure)) {
-            Write-Host "[OK] Container, volume, network, tiga image bertag, dan rahasia sementara dibersihkan."
+            Write-Host "[OK] Container, volume, network, empat image, sertifikat, dan rahasia sementara dibersihkan."
         }
         else {
             Write-Host "[PERINGATAN] Cleanup tidak lengkap: $cleanupFailure" -ForegroundColor Yellow
@@ -717,7 +1005,7 @@ async function attempt(forwardedFor) {
 
     Write-Host ""
     Write-Host "=== STATUS AKHIR CONTAINER RELEASE GATE ==="
-    Write-Host "[OK] Tiga image produksi, migration gate, health, security headers, forwarded-header trust boundary, port, dan network lulus."
+    Write-Host "[OK] Empat image produksi, migration gate, TLS edge, antiforgery/login, security headers, trust boundary, port, dan network lulus."
     Write-Host "[OK] Resource sementara dibersihkan; stack produksi yang sudah ada tetap identik."
     Write-Host "[OK] HEAD dan status Git tidak berubah; tidak ada database produksi atau pengembangan yang disentuh."
 }

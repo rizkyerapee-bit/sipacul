@@ -11,9 +11,11 @@ yang berbeda.
 2. Service `migrator` menjalankan seluruh EF Core migration tepat satu kali.
 3. API baru dimulai setelah migrator keluar dengan kode `0`.
 4. Frontend baru dimulai setelah `/health/ready` API sehat.
+5. Nginx edge baru dimulai setelah API dan frontend sehat.
 
-PostgreSQL dan API tidak memublikasikan port host. Satu-satunya port host adalah
-frontend, yang meneruskan `/api/v1/*` ke API melalui network internal Compose.
+PostgreSQL, API, dan frontend tidak memublikasikan port host. Satu-satunya port
+host adalah HTTPS Nginx edge. Edge meneruskan `/api/v1/*` langsung ke API dan
+route lain ke frontend melalui network internal Compose.
 
 ## Konfigurasi
 
@@ -24,13 +26,15 @@ Copy-Item production.env.example .env.production
 notepad.exe .env.production
 ```
 
-Gunakan password PostgreSQL dan bootstrap token acak yang panjang. Jangan
-commit `.env.production`; pola `.env.*` repository sudah mengabaikannya.
+Gunakan password PostgreSQL dan bootstrap token acak yang panjang. Isi path
+absolut sertifikat serta private key PEM, lalu pilih subnet application yang
+tidak bertabrakan pada host. Jangan commit `.env.production`, sertifikat, atau
+private key; pola `.env.*` repository sudah mengabaikan file environment.
 
-Default hanya mengikat frontend pada `127.0.0.1:8080`, cocok untuk reverse
-proxy yang berjalan pada host yang sama. TLS, nama domain, sertifikat, dan
-hardening reverse proxy tetap berada di luar checkpoint ini. Jangan membuka
-port langsung ke internet sebelum lapisan tersebut tersedia.
+Default hanya mengikat edge pada `127.0.0.1:8443`. Konfigurasi ini membuktikan
+jalur HTTPS tetapi belum membuat deployment publik. Pertahankan loopback sampai
+sertifikat sesuai domain, DNS, firewall, dan kebijakan pembaruan sertifikat
+tersedia. Jangan memakai sertifikat sementara container gate pada deployment.
 
 ## Menjalankan stack
 
@@ -65,11 +69,11 @@ docker.exe compose --env-file .env.production --file compose.production.yml logs
 ```
 
 Liveness dan readiness API tetap tersedia di dalam network Compose. Dari host,
-verifikasi jalur publik melalui frontend:
+verifikasi jalur edge dengan sertifikat deployment:
 
 ```text
-http://127.0.0.1:8080/login
-http://127.0.0.1:8080/api/v1/bootstrap/status
+https://127.0.0.1:8443/login
+https://127.0.0.1:8443/api/v1/bootstrap/status
 ```
 
 ## Persistensi dan operasi aman
@@ -82,6 +86,7 @@ http://127.0.0.1:8080/api/v1/bootstrap/status
 - `docker compose down --volumes` menghapus database dan kunci; gunakan hanya
   untuk reset yang memang disengaja dan sudah memiliki backup.
 
-Backup terjadwal, restore drill, registry image, TLS/reverse proxy, dan pipeline
-deployment menjadi checkpoint lanjutan. Sprint 20B2 hanya membuktikan lifecycle
-stack produksi, migration gate, isolasi network, serta persistensi dasar.
+Backup terjadwal dan restore drill sudah memiliki checkpoint terpisah. Registry
+image, domain publik, otomasi sertifikat, dan pipeline deployment tetap menjadi
+checkpoint lanjutan. Sprint 20B2 tetap merupakan dasar lifecycle stack;
+perubahan edge berikutnya memperketat jalur publik tanpa mengubah database.
