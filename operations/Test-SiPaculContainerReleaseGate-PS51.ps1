@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version 2.0
 
-$Revision = "Sprint 20D2F Container Release Gate Rev9 - curl HTTPS host probe"
+$Revision = "Sprint 20D2F Container Release Gate Rev10 - Linux curl and TLS cleanup portability"
 $repoRoot = $null
 $gitCommand = $null
 $dockerCommand = $null
@@ -16,6 +16,8 @@ $composeFile = $null
 $runtimeRoot = $null
 $envFile = $null
 $composeProject = $null
+$dockerTlsRoot = $null
+$edgeImage = $null
 $imageTags = @()
 $gitHeadBefore = $null
 $gitStatusBefore = @()
@@ -151,7 +153,7 @@ function Get-TestHttpsStatusCode([string]$Uri) {
             "--show-error",
             "--fail",
             "--insecure",
-            "--noproxy", "*",
+            "--noproxy", "127.0.0.1,localhost",
             "--connect-timeout", "10",
             "--max-time", "20",
             "--output", $discardPath,
@@ -395,6 +397,28 @@ function Remove-TemporaryResources {
             Invoke-Compose "Cleanup Compose" @(
                 "down", "--volumes", "--remove-orphans", "--timeout", "20"
             ) | Out-Host
+        }
+        catch {
+            $errors.Add($_.Exception.Message)
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($script:dockerTlsRoot) -and
+        -not [string]::IsNullOrWhiteSpace($script:edgeImage) -and
+        (Test-Path -LiteralPath $script:dockerTlsRoot -PathType Container)) {
+        try {
+            if (Test-ImageExists $script:edgeImage) {
+                $tlsMount = (
+                    "type=bind,source=$($script:dockerTlsRoot),target=/tls"
+                )
+                Invoke-Docker "Menghapus artefak TLS sementara" @(
+                    "run", "--rm", "--user", "0:0",
+                    "--entrypoint", "/bin/sh",
+                    "--mount", $tlsMount,
+                    $script:edgeImage,
+                    "-c", "rm -f /tls/tls.crt /tls/tls.key"
+                ) | Out-Host
+            }
         }
         catch {
             $errors.Add($_.Exception.Message)
