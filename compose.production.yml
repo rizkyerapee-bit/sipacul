@@ -120,6 +120,7 @@ services:
 
   edge:
     image: "${SIPACUL_EDGE_IMAGE:-sipacul-edge:local}"
+    user: "101:0"
     build:
       context: .
       dockerfile: edge/Dockerfile
