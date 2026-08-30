@@ -1,0 +1,19 @@
+[Unit]
+Description=SiPacul PostgreSQL backup cycle
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory=/opt/sipacul/repository
+ExecStart=/opt/sipacul/repository/operations/linux/backup-cycle.sh --repository-root /opt/sipacul/repository --environment-file /etc/sipacul/.env.production --compose-project sipacul-production --output-directory /var/backups/sipacul --log-file /var/log/sipacul/backup-cycle.log --retention-days 30 --minimum-backups 7 --freshness-hours 26 --apply-retention --verify-all-hashes
+TimeoutStartSec=4h
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+
+[Install]
+WantedBy=multi-user.target

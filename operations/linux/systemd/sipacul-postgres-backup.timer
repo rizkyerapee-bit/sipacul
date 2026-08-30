@@ -1,0 +1,11 @@
+[Unit]
+Description=Run SiPacul PostgreSQL backup every day at 02:00 Asia/Jakarta
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 Asia/Jakarta
+Persistent=true
+AccuracySec=1m
+Unit=sipacul-postgres-backup.service
+
+[Install]
+WantedBy=timers.target

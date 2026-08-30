@@ -35,9 +35,16 @@ while [ "$#" -gt 0 ]; do
 done
 
 sipacul_require_root
-for command_name in docker git python3 realpath sha256sum; do
+for command_name in docker flock git python3 realpath sha256sum; do
     sipacul_require_command "$command_name"
 done
+
+BACKUP_LOCK_FILE="${SIPACUL_BACKUP_OPERATION_LOCK_FILE:-/run/lock/sipacul-postgres-backup-operation.lock}"
+mkdir -p "$(dirname "$BACKUP_LOCK_FILE")"
+exec 8>"$BACKUP_LOCK_FILE"
+if ! flock -n 8; then
+    sipacul_die "Operasi backup PostgreSQL lain sedang berjalan."
+fi
 
 sipacul_resolve_repository_root "$REPOSITORY_ROOT"
 ENVIRONMENT_FILE="$(sipacul_resolve_file "$ENVIRONMENT_FILE" "$REPOSITORY_ROOT" "Production environment")"
