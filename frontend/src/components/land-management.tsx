@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   addLandPlot,
@@ -38,6 +38,11 @@ import {
   validateLandDraft,
   validatePlotDraft,
 } from "@/lib/lands/land-management";
+import {
+  hasFormDraftChanged,
+  resolveFormCloseDecision,
+  type FormCloseSource,
+} from "@/lib/ui/form-data-loss";
 import styles from "./land-management.module.css";
 
 type LandManagementProps = {
@@ -163,18 +168,25 @@ function LandEditor({
   land,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
   land: Land | null;
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (request: CreateLandRequest) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<LandDraft>(() => landDraftFrom(land));
+  const [initialDraft] = useState<LandDraft>(() => landDraftFrom(land));
+  const [draft, setDraft] = useState<LandDraft>(() => initialDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const isCreate = land === null;
+
+  useEffect(() => {
+    onDirtyChange(hasFormDraftChanged(initialDraft, draft));
+  }, [draft, initialDraft, onDirtyChange]);
 
   function updateDraft<Key extends keyof LandDraft>(key: Key, value: LandDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -317,6 +329,7 @@ function PlotEditor({
   plot,
   isSaving,
   apiError,
+  onDirtyChange,
   onCancel,
   onSubmit,
 }: {
@@ -324,12 +337,18 @@ function PlotEditor({
   plot: LandPlot | null;
   isSaving: boolean;
   apiError: string | null;
+  onDirtyChange: (isDirty: boolean) => void;
   onCancel: () => void;
   onSubmit: (request: PlotDraft) => Promise<void>;
 }) {
-  const [draft, setDraft] = useState<PlotDraft>(() => plotDraftFrom(plot));
+  const [initialDraft] = useState<PlotDraft>(() => plotDraftFrom(plot));
+  const [draft, setDraft] = useState<PlotDraft>(() => initialDraft);
   const [errors, setErrors] = useState<string[]>([]);
   const isCreate = plot === null;
+
+  useEffect(() => {
+    onDirtyChange(hasFormDraftChanged(initialDraft, draft));
+  }, [draft, initialDraft, onDirtyChange]);
 
   function updateDraft<Key extends keyof PlotDraft>(key: Key, value: PlotDraft[Key]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -421,6 +440,8 @@ export function LandManagement({ organization, organizationId, permissions }: La
   const [statusFilter, setStatusFilter] = useState<LandStatusFilter>("all");
   const [selectedLandId, setSelectedLandId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [discardEditorConfirmation, setDiscardEditorConfirmation] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -428,6 +449,32 @@ export function LandManagement({ organization, organizationId, permissions }: La
   const [notice, setNotice] = useState<string | null>(null);
   const canRead = permissions.includes("lands.read");
   const canWrite = permissions.includes("lands.write");
+
+  const closeEditor = useCallback(() => {
+    setEditor(null);
+    setEditorDirty(false);
+    setDiscardEditorConfirmation(false);
+    setEditorError(null);
+  }, []);
+
+  const requestEditorClose = useCallback((source: FormCloseSource) => {
+    const decision = resolveFormCloseDecision({
+      source,
+      isDirty: editorDirty,
+      isSaving,
+    });
+
+    if (decision === "ignore") {
+      return;
+    }
+
+    if (decision === "confirm-discard") {
+      setDiscardEditorConfirmation(true);
+      return;
+    }
+
+    closeEditor();
+  }, [closeEditor, editorDirty, isSaving]);
 
   async function refreshLands() {
     if (!organizationId || !canRead) {
@@ -487,26 +534,40 @@ export function LandManagement({ organization, organizationId, permissions }: La
   }, [organizationId, canRead, router]);
 
   useEffect(() => {
-    if (!editor && !confirmation) {
+    if (!editor && !confirmation && !discardEditorConfirmation) {
       return;
     }
 
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     function closeWithEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isSaving) {
-        setEditor(null);
+      if (event.key !== "Escape" || isSaving) {
+        return;
+      }
+
+      if (discardEditorConfirmation) {
+        setDiscardEditorConfirmation(false);
+        return;
+      }
+
+      if (confirmation) {
         setConfirmation(null);
-        setEditorError(null);
+        return;
+      }
+
+      if (editor) {
+        requestEditorClose("escape");
       }
     }
+
     window.addEventListener("keydown", closeWithEscape);
 
     return () => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", closeWithEscape);
     };
-  }, [editor, confirmation, isSaving]);
+  }, [confirmation, discardEditorConfirmation, editor, isSaving, requestEditorClose]);
 
   const filteredLands = useMemo(
     () => filterLands(lands, query, statusFilter),
@@ -555,7 +616,7 @@ export function LandManagement({ organization, organizationId, permissions }: La
         })
         : await createLand(organizationId, request);
       applyUpdatedLand(updatedLand, editor?.mode === "edit" ? "Informasi lahan diperbarui." : "Lahan baru berhasil ditambahkan.");
-      setEditor(null);
+      closeEditor();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         router.replace("/login");
@@ -593,7 +654,7 @@ export function LandManagement({ organization, organizationId, permissions }: La
           ...payload,
         });
       applyUpdatedLand(updatedLand, editor.mode === "edit" ? "Informasi petak diperbarui." : "Petak baru berhasil ditambahkan.");
-      setEditor(null);
+      closeEditor();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         router.replace("/login");
@@ -954,21 +1015,38 @@ export function LandManagement({ organization, organizationId, permissions }: La
 
       {editor && (
         <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => {
-          if (event.target === event.currentTarget && !isSaving) {
-            setEditor(null);
-            setEditorError(null);
+          if (event.target === event.currentTarget) {
+            requestEditorClose("backdrop");
           }
         }}>
           <div className={styles.modalPanel} role="dialog" aria-modal="true" aria-label={editor.kind === "land" ? "Formulir lahan" : "Formulir petak"}>
             {editor.kind === "land" ? (
-              <LandEditor land={editor.mode === "edit" ? target.land : null} isSaving={isSaving} apiError={editorError} onCancel={() => { setEditor(null); setEditorError(null); }} onSubmit={submitLand} />
+              <LandEditor land={editor.mode === "edit" ? target.land : null} isSaving={isSaving} apiError={editorError} onDirtyChange={setEditorDirty} onCancel={() => requestEditorClose("explicit")} onSubmit={submitLand} />
             ) : (
               (() => {
                 const land = lands.find((item) => item.id === editor.landId);
                 if (!land) return null;
-                return <PlotEditor land={land} plot={editor.mode === "edit" ? target.plot : null} isSaving={isSaving} apiError={editorError} onCancel={() => { setEditor(null); setEditorError(null); }} onSubmit={submitPlot} />;
+                return <PlotEditor land={land} plot={editor.mode === "edit" ? target.plot : null} isSaving={isSaving} apiError={editorError} onDirtyChange={setEditorDirty} onCancel={() => requestEditorClose("explicit")} onSubmit={submitPlot} />;
               })()
             )}
+          </div>
+        </div>
+      )}
+
+      {discardEditorConfirmation && (
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && !isSaving) {
+            setDiscardEditorConfirmation(false);
+          }
+        }}>
+          <div className={styles.confirmDialog} role="alertdialog" aria-modal="true" aria-labelledby="discard-editor-title" aria-describedby="discard-editor-description">
+            <span className={`${styles.confirmIcon} ${styles.confirmIconDanger}`}><Icon name="trash" /></span>
+            <h2 id="discard-editor-title">Buang perubahan formulir?</h2>
+            <p id="discard-editor-description">Perubahan yang belum disimpan akan hilang. Pilih lanjut mengedit untuk kembali ke formulir.</p>
+            <div className={styles.confirmActions}>
+              <button className={styles.secondaryButton} type="button" disabled={isSaving} onClick={() => setDiscardEditorConfirmation(false)}>Lanjut mengedit</button>
+              <button className={styles.dangerButton} type="button" disabled={isSaving} onClick={closeEditor}>Buang perubahan</button>
+            </div>
           </div>
         </div>
       )}
