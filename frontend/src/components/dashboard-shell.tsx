@@ -319,7 +319,8 @@ export function DashboardShell() {
                 type="button"
                 disabled={!isAvailable}
                 aria-current={isActive ? "page" : undefined}
-                title={isSidebarCollapsed ? item.label : undefined}
+                aria-label={`${item.label}. ${item.caption}`}
+                title={`${item.label} â€” ${item.caption}`}
                 onClick={() => {
                   setIsMobileNavigationOpen(false);
                   if (item.path && !isActive) {
