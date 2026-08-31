@@ -41,6 +41,6 @@ describe("dashboard shell design compatibility foundation", () => {
     expect(css).toContain(".navigationCopy small {");
     expect(css).toContain("display: none;");
     expect(shell).toContain('aria-label={`${item.label}. ${item.caption}`}');
-    expect(shell).toContain('title={`${item.label} â€” ${item.caption}`}');
+    expect(shell).toContain('title={`${item.label} - ${item.caption}`}');
   });
 });

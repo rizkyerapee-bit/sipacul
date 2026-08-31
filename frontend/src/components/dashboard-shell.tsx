@@ -320,7 +320,7 @@ export function DashboardShell() {
                 disabled={!isAvailable}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={`${item.label}. ${item.caption}`}
-                title={`${item.label} â€” ${item.caption}`}
+                title={`${item.label} - ${item.caption}`}
                 onClick={() => {
                   setIsMobileNavigationOpen(false);
                   if (item.path && !isActive) {
