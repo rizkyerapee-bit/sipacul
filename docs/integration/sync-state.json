@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-08-31",
+  "core": {
+    "sourceHeadAtBridge": "910390c602ac09cbe1a72b089536ce2888a9945e",
+    "productionRelease": "910390c602ac09cbe1a72b089536ce2888a9945e"
+  },
+  "design": {
+    "repositoryHeadObserved": "a88ae908b1c7f297d14bf6585ca97ae05b6b75cd",
+    "sourceHeadAtHandoff": "090ee421c0caf2eaca93d127eac4df54c8647a31",
+    "auditedByCore": "0e7e04723dc3fb7740a8cb6c46c4a4d8dfaf00a8",
+    "integratedToCore": null,
+    "handoffCommitObserved": "a88ae908b1c7f297d14bf6585ca97ae05b6b75cd"
+  },
+  "pendingDesignDelta": {
+    "baseAuditedSha": "0e7e04723dc3fb7740a8cb6c46c4a4d8dfaf00a8",
+    "sourceHeadSha": "090ee421c0caf2eaca93d127eac4df54c8647a31",
+    "documentedCommitCount": 8,
+    "requiresAuditBeforeIntegration": true
+  },
+  "coordination": {
+    "currentTrack": "BRIDGE-001",
+    "nextTrack": "UI-001-STEP-0",
+    "nextAction": "Design System Delta Audit",
+    "c8g12Rev1": "DO_NOT_RUN",
+    "masterCommodityFrontend": "DEFERRED_TO_C8G12_REV2_AFTER_COMPATIBILITY_FOUNDATION",
+    "designCapabilityProposalCount": 0
+  }
+}
