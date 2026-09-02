@@ -38,6 +38,7 @@ import {
   type CropCycleStatusFilter,
   validateCropCycleDraft,
 } from "@/lib/cultivation/crop-cycle-management";
+import { getCultivationActivitiesPath } from "@/lib/cultivation/activity-management";
 import {
   hasFormDraftChanged,
   resolveFormCloseDecision,
@@ -860,7 +861,7 @@ export function CropCycleManagement({
           {!canWrite && <span className={styles.readOnlyBadge}>Mode baca</span>}
           {cropCycles.length > 0 && (
             <>
-              <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}>
+              <button className={styles.secondaryButton} type="button" onClick={() => router.push(getCultivationActivitiesPath(selectedCycle?.id))}>
                 <Icon name="notes" /> Aktivitas lapangan
               </button>
               <button className={styles.secondaryButton} type="button" onClick={() => router.push("/harvest")}>
@@ -985,7 +986,7 @@ export function CropCycleManagement({
                 </div>
                 <div className={styles.detailActions}>
                   <span className={`${styles.statusBadge} ${styles[`status${selectedCycle.status}`]}`}>{cropCycleStatusLabels[selectedCycle.status]}</span>
-                  <button className={styles.secondaryButton} type="button" onClick={() => router.push("/cultivation/activities")}><Icon name="notes" /> Aktivitas</button>
+                  <button className={styles.secondaryButton} type="button" onClick={() => router.push(getCultivationActivitiesPath(selectedCycle.id))}><Icon name="notes" /> Aktivitas</button>
                   <button className={styles.secondaryButton} type="button" onClick={() => router.push("/harvest")}><Icon name="harvest" /> Panen</button>
                   {canWrite && selectedCycle.status === 1 && (
                     <>

@@ -8,8 +8,10 @@ import {
   activityDraftFrom,
   filterActivities,
   formatCurrency,
+  getCultivationActivitiesPath,
   parseDecimal,
   resourceDraftFrom,
+  selectPreferredCropCycle,
   validateActivityDraft,
   validateResourceDraft,
 } from "@/lib/cultivation/activity-management";
@@ -102,6 +104,38 @@ describe("cultivation activity helpers", () => {
     );
 
     expect(result.map((item) => item.id)).toEqual(["activity-1"]);
+  });
+
+  it("keeps an explicitly requested crop cycle when opening activities", () => {
+    const completed = { ...cycle, id: "cycle-completed", status: 3 as const };
+
+    expect(selectPreferredCropCycle(
+      [cycle, completed],
+      completed.id,
+    )?.id).toBe(completed.id);
+  });
+
+  it("falls back to active, planned, first, or no crop cycle", () => {
+    const completed = { ...cycle, id: "cycle-completed", status: 3 as const };
+    const planned = { ...cycle, id: "cycle-planned", status: 1 as const };
+
+    expect(selectPreferredCropCycle(
+      [completed, planned, cycle],
+      "missing-cycle",
+    )?.id).toBe(cycle.id);
+    expect(selectPreferredCropCycle(
+      [completed, planned],
+      "missing-cycle",
+    )?.id).toBe(planned.id);
+    expect(selectPreferredCropCycle([completed], null)?.id).toBe(completed.id);
+    expect(selectPreferredCropCycle([], null)).toBeNull();
+  });
+
+  it("builds an activities route that preserves the crop-cycle context", () => {
+    expect(getCultivationActivitiesPath("cycle/a b")).toBe(
+      "/cultivation/activities?cropCycleId=cycle%2Fa%20b",
+    );
+    expect(getCultivationActivitiesPath(null)).toBe("/cultivation/activities");
   });
 
   it("accepts a complete SOP-linked activity plan", () => {

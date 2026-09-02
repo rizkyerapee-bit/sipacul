@@ -39,10 +39,12 @@ import {
   formatActivityDate,
   formatCurrency,
   formatQuantity,
+  getCultivationActivitiesPath,
   optionalActivityText,
   parseDecimal,
   resourceDraftFrom,
   resourceTypeLabels,
+  selectPreferredCropCycle,
   validateActivityDraft,
   validateResourceDraft,
   type ActivityDraft,
@@ -494,7 +496,8 @@ export function CultivationActivityManagement({ organization, organizationId, pe
         if (!cancelled) {
           setCropCycles(nextCycles);
           setCultivationSops(nextSops);
-          const preferred = nextCycles.find((item) => item.status === 2) ?? nextCycles.find((item) => item.status === 1) ?? nextCycles[0];
+          const requestedCycleId = new URLSearchParams(window.location.search).get("cropCycleId");
+          const preferred = selectPreferredCropCycle(nextCycles, requestedCycleId);
           setSelectedCycleId(preferred?.id ?? "");
         }
       } catch (error) {
@@ -557,6 +560,14 @@ export function CultivationActivityManagement({ organization, organizationId, pe
   function applyUpdatedActivity(updated: CultivationActivity, message: string) {
     setActivities((current) => replaceActivity(current, updated));
     setSelectedActivityId(updated.id); setNotice(message); setPageError(null);
+  }
+
+  function changeSelectedCycle(cycleId: string) {
+    setSelectedCycleId(cycleId);
+    setQuery("");
+    setStatusFilter("all");
+    setTypeFilter("all");
+    router.replace(getCultivationActivitiesPath(cycleId), { scroll: false });
   }
 
   async function submitActivity(request: CreateCultivationActivityRequest) {
@@ -623,7 +634,7 @@ export function CultivationActivityManagement({ organization, organizationId, pe
       {notice && <div className={styles.notice} role="status"><span><Icon name="check" /></span><strong>{notice}</strong><button type="button" aria-label="Tutup pemberitahuan" onClick={() => setNotice(null)}><Icon name="close" /></button></div>}
       {pageError && <div className={styles.pageError} role="alert">{pageError}</div>}
 
-      <div className={styles.cycleSelector}><label><span>Siklus yang dicatat</span><select value={selectedCycleId} disabled={isLoading || cropCycles.length === 0} onChange={(event) => { setSelectedCycleId(event.target.value); setQuery(""); setStatusFilter("all"); setTypeFilter("all"); }}>{cropCycles.map((cycle) => <option value={cycle.id} key={cycle.id}>{cycle.code} · {cycle.name} · {cycle.status === 1 ? "Rencana" : cycle.status === 2 ? "Berjalan" : cycle.status === 3 ? "Selesai" : "Dibatalkan"}</option>)}</select></label>{selectedCycle && <div><small>Periode</small><strong>{formatActivityDate(selectedCycle.plannedStartDate)} – {formatActivityDate(selectedCycle.expectedHarvestDate)}</strong><span className={`${styles.cycleStatus} ${styles[`cycleStatus${selectedCycle.status}`]}`}>{selectedCycle.status === 1 ? "Rencana" : selectedCycle.status === 2 ? "Berjalan" : selectedCycle.status === 3 ? "Selesai" : "Dibatalkan"}</span></div>}</div>
+      <div className={styles.cycleSelector}><label><span>Siklus yang dicatat</span><select value={selectedCycleId} disabled={isLoading || cropCycles.length === 0} onChange={(event) => changeSelectedCycle(event.target.value)}>{cropCycles.map((cycle) => <option value={cycle.id} key={cycle.id}>{cycle.code} · {cycle.name} · {cycle.status === 1 ? "Rencana" : cycle.status === 2 ? "Berjalan" : cycle.status === 3 ? "Selesai" : "Dibatalkan"}</option>)}</select></label>{selectedCycle && <div><small>Periode</small><strong>{formatActivityDate(selectedCycle.plannedStartDate)} – {formatActivityDate(selectedCycle.expectedHarvestDate)}</strong><span className={`${styles.cycleStatus} ${styles[`cycleStatus${selectedCycle.status}`]}`}>{selectedCycle.status === 1 ? "Rencana" : selectedCycle.status === 2 ? "Berjalan" : selectedCycle.status === 3 ? "Selesai" : "Dibatalkan"}</span></div>}</div>
 
       {isLoading ? <div className={styles.loadingState}><span className="loader" /><p>Memuat siklus budidaya...</p></div> : cropCycles.length === 0 ? <div className={styles.emptyState}><span><Icon name="activity" /></span><h2>Belum ada siklus budidaya</h2><p>Buat siklus terlebih dahulu sebelum mencatat pekerjaan lapangan.</p><button className={styles.primaryButton} type="button" onClick={() => router.push("/cultivation")}>Buka Siklus Budidaya</button></div> : <>
         <div className={styles.metricGrid}><article><span>Rencana</span><strong>{plannedCount}</strong><small>Menunggu dikerjakan</small><i><Icon name="calendar" /></i></article><article className={styles.metricActive}><span>Sedang berjalan</span><strong>{inProgressCount}</strong><small>Perlu diperbarui</small><i><Icon name="start" /></i></article><article><span>Selesai</span><strong>{completedCount}</strong><small>Siap dievaluasi</small><i><Icon name="check" /></i></article><article><span>Biaya aktual</span><strong>{formatCurrency(totalCost)}</strong><small>{activities.reduce((sum, item) => sum + item.resources.length, 0)} baris sumber daya</small><i><Icon name="cost" /></i></article></div>

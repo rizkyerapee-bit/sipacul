@@ -12,6 +12,33 @@ import type {
 export type ActivityStatusFilter = "all" | CultivationActivityStatus;
 export type ActivityTypeFilter = "all" | CultivationActivityType;
 
+export function getCultivationActivitiesPath(
+  cropCycleId?: string | null,
+): string {
+  const normalizedCycleId = cropCycleId?.trim();
+  return normalizedCycleId
+    ? `/cultivation/activities?cropCycleId=${encodeURIComponent(normalizedCycleId)}`
+    : "/cultivation/activities";
+}
+
+export function selectPreferredCropCycle(
+  cycles: CropCycle[],
+  requestedCropCycleId?: string | null,
+): CropCycle | null {
+  const requestedCycleId = requestedCropCycleId?.trim();
+  if (requestedCycleId) {
+    const requestedCycle = cycles.find((cycle) => cycle.id === requestedCycleId);
+    if (requestedCycle) {
+      return requestedCycle;
+    }
+  }
+
+  return cycles.find((cycle) => cycle.status === 2)
+    ?? cycles.find((cycle) => cycle.status === 1)
+    ?? cycles[0]
+    ?? null;
+}
+
 export type ActivityDraft = {
   code: string;
   name: string;
