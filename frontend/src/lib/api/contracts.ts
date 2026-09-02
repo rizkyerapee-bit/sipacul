@@ -136,6 +136,22 @@ export type Land = {
   plots: LandPlot[];
 };
 
+export type CommodityCategory = {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type CreateCommodityCategoryRequest = {
+  name: string;
+  description: string | null;
+};
+
+export type UpdateCommodityCategoryRequest = CreateCommodityCategoryRequest;
 export type Commodity = {
   id: string;
   organizationId: string;
@@ -149,6 +165,15 @@ export type Commodity = {
   updatedAt: string | null;
 };
 
+export type CreateCommodityRequest = {
+  code: string;
+  name: string;
+  commodityCategoryId: string;
+  scientificName: string | null;
+  description: string | null;
+};
+
+export type UpdateCommodityRequest = Omit<CreateCommodityRequest, "code">;
 export type CultivationSopStep = {
   id: string;
   organizationId: string;

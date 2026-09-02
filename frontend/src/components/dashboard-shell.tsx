@@ -9,6 +9,7 @@ import { CultivationActivityManagement } from "@/components/cultivation-activity
 import { ExpenseManagement } from "@/components/expense-management";
 import { HarvestManagement } from "@/components/harvest-management";
 import { LandManagement } from "@/components/land-management";
+import { CommodityManagement } from "@/components/commodity-management";
 import { ProfitSharingManagement } from "@/components/profit-sharing-management";
 import { ReceivableManagement } from "@/components/receivable-management";
 import { SaleManagement } from "@/components/sale-management";
@@ -52,7 +53,8 @@ type IconName =
   | "check"
   | "trend"
   | "wallet"
-  | "history";
+  | "history"
+  | "catalog";
 
 type NavigationItem = {
   label: string;
@@ -65,6 +67,7 @@ type NavigationItem = {
 const navigation: NavigationItem[] = [
   { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "dashboard", path: "/dashboard" },
   { label: "Lahan", caption: "Lahan dan petak", permission: "lands.read", icon: "land", path: "/lands" },
+  { label: "Master data", caption: "Komoditas dan kategori", permission: "master-data.read", icon: "catalog", path: "/master-data/commodities" },
   { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout", path: "/cultivation" },
   { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: "/harvest" },
   { label: "Penjualan", caption: "Transaksi hasil panen", permission: "sales.read", icon: "sales", path: "/sales" },
@@ -96,6 +99,7 @@ const iconPaths: Record<IconName, string> = {
   trend: "m4 17 5-5 4 4 7-8m-5 0h5v5",
   wallet: "M4 6h14a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12m4 7h-5a2 2 0 0 0 0 4h5",
   history: "M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5m4-1v6l4 2",
+  catalog: "M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z",
 };
 
 function AppIcon({ name }: { name: IconName }) {
@@ -303,13 +307,15 @@ export function DashboardShell() {
           {visibleNavigation.map((item) => {
             const isActive = item.path === "/cultivation"
               ? pathname.startsWith("/cultivation")
-              : item.path === "/finance"
-                ? pathname.startsWith("/finance")
-                : item.path === "/profit-sharing"
-                  ? pathname.startsWith("/profit-sharing")
-                  : item.path === "/evaluations/season-history"
-                    ? pathname.startsWith("/evaluations")
-                    : item.path === pathname;
+              : item.path === "/master-data/commodities"
+                ? pathname.startsWith("/master-data")
+                : item.path === "/finance"
+                  ? pathname.startsWith("/finance")
+                  : item.path === "/profit-sharing"
+                    ? pathname.startsWith("/profit-sharing")
+                    : item.path === "/evaluations/season-history"
+                      ? pathname.startsWith("/evaluations")
+                      : item.path === pathname;
             const isAvailable = item.path !== null;
 
             return (
@@ -448,7 +454,14 @@ export function DashboardShell() {
 
         <main className={styles.content}>
           {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
-          {pathname === "/lands" ? (
+          {pathname === "/master-data/commodities" ? (
+            <CommodityManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/lands" ? (
             <LandManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}

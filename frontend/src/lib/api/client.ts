@@ -15,6 +15,7 @@ import type {
   CancelSalePaymentRequest,
   CancelSaleRequest,
   Commodity,
+  CommodityCategory,
   CompleteCropCycleRequest,
   CompleteCultivationActivityRequest,
   CropCycle,
@@ -23,6 +24,8 @@ import type {
   CapitalContributionFilter,
   AssignProfitSharingSchemeRequest,
   CreateCapitalContributionRequest,
+  CreateCommodityCategoryRequest,
+  CreateCommodityRequest,
   CreateProfitSharingSchemeRequest,
   CreateProfitSharingSettlementRequest,
   CreateCultivationExpenseRequest,
@@ -60,6 +63,8 @@ import type {
   SeasonHistoryFilter,
   StartCropCycleRequest,
   StartCultivationActivityRequest,
+  UpdateCommodityCategoryRequest,
+  UpdateCommodityRequest,
   UpdateCultivationActivityNotesRequest,
   UpdateCultivationActivityPlanRequest,
   UpdateCultivationActivityResourceRequest,
@@ -361,6 +366,89 @@ export function getCommodities(
   );
 }
 
+export function getCommodityCategories(
+  organizationId: string,
+): Promise<CommodityCategory[]> {
+  return apiRequest<CommodityCategory[]>(
+    getOrganizationResourcePath(organizationId, "/commodity-categories"),
+  );
+}
+
+export function createCommodityCategory(
+  organizationId: string,
+  request: CreateCommodityCategoryRequest,
+): Promise<CommodityCategory> {
+  return csrfRequest<CommodityCategory>(
+    getOrganizationResourcePath(organizationId, "/commodity-categories"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCommodityCategory(
+  organizationId: string,
+  categoryId: string,
+  request: UpdateCommodityCategoryRequest,
+): Promise<CommodityCategory> {
+  return csrfRequest<CommodityCategory>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/commodity-categories/${encodeURIComponent(categoryId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function setCommodityCategoryActive(
+  organizationId: string,
+  categoryId: string,
+  isActive: boolean,
+): Promise<CommodityCategory> {
+  return csrfRequest<CommodityCategory>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/commodity-categories/${encodeURIComponent(categoryId)}/${isActive ? "activate" : "deactivate"}`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function createCommodity(
+  organizationId: string,
+  request: CreateCommodityRequest,
+): Promise<Commodity> {
+  return csrfRequest<Commodity>(
+    getOrganizationResourcePath(organizationId, "/commodities"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCommodity(
+  organizationId: string,
+  commodityId: string,
+  request: UpdateCommodityRequest,
+): Promise<Commodity> {
+  return csrfRequest<Commodity>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/commodities/${encodeURIComponent(commodityId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function setCommodityActive(
+  organizationId: string,
+  commodityId: string,
+  isActive: boolean,
+): Promise<Commodity> {
+  return csrfRequest<Commodity>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/commodities/${encodeURIComponent(commodityId)}/${isActive ? "activate" : "deactivate"}`,
+    ),
+    { method: "PATCH" },
+  );
+}
 export function getCultivationSops(
   organizationId: string,
 ): Promise<CultivationSop[]> {
