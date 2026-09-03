@@ -1,0 +1,792 @@
+.page {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.page button,
+.page input,
+.page select,
+.page textarea {
+  font: inherit;
+}
+
+.page button {
+  cursor: pointer;
+}
+
+.page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.page svg,
+.stateCard > svg,
+.emptySmall svg,
+.emptyDetail svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 92% 14%, rgba(34, 197, 94, 0.16), transparent 36%),
+    var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.hero h1,
+.detail h2,
+.stepHeading h3,
+.modalHeading h2,
+.confirmDialog h2,
+.stateCard h1,
+.emptyDetail h2,
+.emptyDetail h3 {
+  margin: 0;
+  color: var(--foreground);
+}
+
+.hero h1 {
+  margin-top: 5px;
+  font-size: clamp(1.65rem, 2.5vw, 2.25rem);
+  letter-spacing: -0.04em;
+}
+
+.hero p,
+.detailHeader p,
+.stepHeading p,
+.modalHeading p,
+.confirmDialog p,
+.stateCard p,
+.emptyDetail p {
+  margin: 8px 0 0;
+  color: var(--muted-foreground);
+  line-height: 1.55;
+}
+
+.eyebrow {
+  color: var(--primary);
+  font-size: 0.73rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.heroActions,
+.detailActions,
+.modalFooter {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.successButton {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 15px;
+  border-radius: 11px;
+  font-weight: 750;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.primaryButton svg,
+.secondaryButton svg,
+.dangerButton svg,
+.successButton svg {
+  width: 17px;
+  height: 17px;
+}
+
+.primaryButton {
+  border: 1px solid var(--primary);
+  color: white;
+  background: var(--primary);
+}
+
+.secondaryButton {
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  background: var(--card);
+}
+
+.dangerButton {
+  border: 1px solid #dc2626;
+  color: #fff;
+  background: #dc2626;
+}
+
+.successButton {
+  border: 1px solid #15803d;
+  color: #fff;
+  background: #15803d;
+}
+
+.primaryButton:not(:disabled):hover,
+.secondaryButton:not(:disabled):hover,
+.dangerButton:not(:disabled):hover,
+.successButton:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.notice,
+.errorAlert,
+.infoAlert,
+.errorPanel {
+  display: grid;
+  gap: 4px;
+  padding: 12px 15px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.notice {
+  border: 1px solid rgba(21, 128, 61, 0.3);
+  color: #166534;
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.errorAlert,
+.errorPanel {
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  color: #991b1b;
+  background: rgba(239, 68, 68, 0.09);
+}
+
+.infoAlert {
+  border: 1px solid rgba(217, 119, 6, 0.32);
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metrics article {
+  display: grid;
+  gap: 5px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.metrics span {
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+}
+
+.metrics strong {
+  color: var(--foreground);
+  font-size: 1.65rem;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(180px, 0.34fr) minmax(150px, 0.26fr);
+  gap: 12px;
+}
+
+.filters input,
+.filters select,
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--foreground);
+  background: var(--card);
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.filters select,
+.field input,
+.field select {
+  min-height: 44px;
+  padding: 9px 12px;
+}
+
+.filters input:focus,
+.filters select:focus,
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+}
+
+.searchField {
+  position: relative;
+}
+
+.searchField svg {
+  position: absolute;
+  z-index: 1;
+  top: 12px;
+  left: 13px;
+  color: var(--muted-foreground);
+}
+
+.searchField input {
+  min-height: 44px;
+  padding: 9px 12px 9px 42px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.34fr) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 520px;
+}
+
+.catalog,
+.detail {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+
+.catalog {
+  overflow: hidden;
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panelTitle > div {
+  display: grid;
+  gap: 3px;
+}
+
+.panelTitle span {
+  color: var(--foreground);
+  font-weight: 800;
+}
+
+.panelTitle small,
+.sopCard small,
+.field small,
+.checkboxField small {
+  color: var(--muted-foreground);
+}
+
+.sopList {
+  display: grid;
+  gap: 8px;
+  max-height: 650px;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.sopCard {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding: 13px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: var(--muted-foreground);
+  background: transparent;
+  text-align: left;
+}
+
+.sopCard:hover {
+  border-color: var(--border);
+  background: var(--secondary);
+}
+
+.sopCardActive {
+  border-color: rgba(34, 197, 94, 0.38);
+  background: rgba(34, 197, 94, 0.08);
+}
+
+.sopCardTop,
+.stepTitle,
+.detailMeta,
+.stepFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.sopCardTop {
+  justify-content: space-between;
+}
+
+.sopCard strong {
+  color: var(--foreground);
+}
+
+.statusActive,
+.statusInactive,
+.required,
+.optional {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.statusActive,
+.required {
+  color: #166534;
+  background: rgba(34, 197, 94, 0.13);
+}
+
+.statusInactive,
+.optional {
+  color: var(--muted-foreground);
+  background: var(--secondary);
+}
+
+.detail {
+  padding: 22px;
+}
+
+.detailHeader,
+.stepHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 22px;
+}
+
+.detailHeader {
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detailHeader > div:first-child,
+.stepHeading > div {
+  min-width: 0;
+}
+
+.detailHeader h2 {
+  margin-top: 9px;
+  font-size: 1.45rem;
+  letter-spacing: -0.025em;
+}
+
+.detailMeta {
+  color: var(--muted-foreground);
+  font-size: 0.82rem;
+}
+
+.stepHeading {
+  margin: 22px 0 14px;
+}
+
+.stepHeading h3 {
+  margin-top: 4px;
+}
+
+.stepHeading p {
+  font-size: 0.87rem;
+}
+
+.stepList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  align-items: flex-start;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--secondary);
+}
+
+.sequence {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.stepContent {
+  min-width: 0;
+}
+
+.stepTitle strong {
+  color: var(--foreground);
+}
+
+.stepContent p {
+  margin: 7px 0 9px;
+  color: var(--muted-foreground);
+  font-size: 0.87rem;
+  line-height: 1.48;
+}
+
+.stepFacts {
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+}
+
+.stepFacts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stepFacts svg {
+  width: 15px;
+  height: 15px;
+}
+
+.stepActions {
+  display: grid;
+  grid-template-columns: repeat(2, 34px);
+  gap: 6px;
+}
+
+.stepActions button,
+.iconButton {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted-foreground);
+  background: var(--card);
+}
+
+.stepActions button:hover,
+.iconButton:hover {
+  color: var(--foreground);
+  border-color: var(--primary);
+}
+
+.stepActions .trashButton:hover {
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.emptySmall,
+.emptyDetail,
+.loading,
+.stateCard {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+.emptySmall {
+  gap: 6px;
+  padding: 32px 16px;
+  font-size: 0.85rem;
+}
+
+.emptySmall strong {
+  color: var(--foreground);
+}
+
+.emptyDetail,
+.loading {
+  min-height: 330px;
+  align-content: center;
+  gap: 7px;
+  padding: 28px;
+}
+
+.emptyDetail > svg,
+.stateCard > svg {
+  width: 36px;
+  height: 36px;
+  color: var(--primary);
+}
+
+.stateCard {
+  min-height: 420px;
+  align-content: center;
+  gap: 8px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--card);
+}
+
+.stateCard code {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--secondary);
+}
+
+.modalBackdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(3px);
+}
+
+.modalPanel,
+.confirmDialog {
+  width: min(720px, 100%);
+  max-height: calc(100vh - 44px);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+}
+
+.editorForm {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.modalHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+}
+
+.modalHeading h2 {
+  margin-top: 4px;
+  font-size: 1.3rem;
+}
+
+.modalHeading p {
+  font-size: 0.88rem;
+}
+
+.modalIcon,
+.confirmIcon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 12px;
+  color: var(--primary);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  color: var(--foreground);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.field b {
+  color: #dc2626;
+}
+
+.field textarea {
+  min-height: 98px;
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+.field small,
+.checkboxField small {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.fieldFull {
+  grid-column: 1 / -1;
+}
+
+.checkboxField {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.checkboxField input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: var(--primary);
+}
+
+.checkboxField span {
+  display: grid;
+  gap: 3px;
+}
+
+.modalFooter {
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.confirmDialog {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  width: min(470px, 100%);
+  padding: 24px;
+}
+
+.confirmDialog .modalFooter {
+  width: 100%;
+  margin-top: 4px;
+}
+
+@media (max-width: 980px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sopList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero,
+  .detailHeader,
+  .stepHeading {
+    flex-direction: column;
+  }
+
+  .heroActions,
+  .detailActions {
+    width: 100%;
+  }
+
+  .heroActions > button,
+  .detailActions > button {
+    flex: 1;
+  }
+
+  .metrics,
+  .filters,
+  .formGrid,
+  .sopList {
+    grid-template-columns: 1fr;
+  }
+
+  .detail {
+    padding: 16px;
+  }
+
+  .stepCard {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .stepActions {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .modalBackdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .modalPanel,
+  .confirmDialog {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .modalHeader,
+  .modalHeading {
+    gap: 10px;
+  }
+
+  .modalIcon {
+    display: none;
+  }
+}
+
+@media (max-width: 460px) {
+  .hero {
+    padding: 20px;
+  }
+
+  .heroActions,
+  .detailActions,
+  .modalFooter {
+    flex-direction: column;
+  }
+
+  .heroActions > button,
+  .detailActions > button,
+  .modalFooter > button {
+    width: 100%;
+  }
+}

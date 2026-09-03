@@ -185,6 +185,17 @@ export const applicationNavigationGroups: ApplicationNavigationGroup[] = [
         groupId: "master-data",
         groupLabel: "Master Data",
       },
+      {
+        id: "cultivation-sops",
+        label: "SOP Budidaya",
+        caption: "Standar dan tahapan budidaya",
+        keywords: ["sop", "standar", "budidaya", "tahapan", "prosedur", "komoditas", "master data"],
+        permission: "master-data.read",
+        icon: "catalog",
+        path: "/master-data/cultivation-sops",
+        groupId: "master-data",
+        groupLabel: "Master Data",
+      },
     ],
   },
 ];
