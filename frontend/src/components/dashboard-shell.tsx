@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { BrandMark } from "@/components/brand-mark";
+import { ApplicationNavigation } from "@/components/application-navigation";
 import { DashboardOverview } from "@/components/dashboard-overview";
 import { CropCycleManagement } from "@/components/crop-cycle-management";
 import { CultivationActivityManagement } from "@/components/cultivation-activity-management";
@@ -16,7 +16,7 @@ import { SaleManagement } from "@/components/sale-management";
 import { SeasonHistoryManagement } from "@/components/season-history-management";
 import { ApiError, getCurrentUser, getOrganization, logout } from "@/lib/api/client";
 import type { CurrentUser, CurrentUserMembership, Organization } from "@/lib/api/contracts";
-import { getRoleLabel, hasPermission, resolveSelectedMembership, setSelectedOrganizationId } from "@/lib/session/organization-selection";
+import { getRoleLabel, resolveSelectedMembership, setSelectedOrganizationId } from "@/lib/session/organization-selection";
 import {
   readSidebarCollapsed,
   readThemePreference,
@@ -55,27 +55,6 @@ type IconName =
   | "wallet"
   | "history"
   | "catalog";
-
-type NavigationItem = {
-  label: string;
-  caption: string;
-  permission: string | null;
-  icon: IconName;
-  path: string | null;
-};
-
-const navigation: NavigationItem[] = [
-  { label: "Ringkasan", caption: "Kondisi usaha hari ini", permission: null, icon: "dashboard", path: "/dashboard" },
-  { label: "Lahan", caption: "Lahan dan petak", permission: "lands.read", icon: "land", path: "/lands" },
-  { label: "Master data", caption: "Komoditas dan kategori", permission: "master-data.read", icon: "catalog", path: "/master-data/commodities" },
-  { label: "Budidaya", caption: "Siklus dan aktivitas", permission: "cultivation.read", icon: "sprout", path: "/cultivation" },
-  { label: "Panen", caption: "Hasil dan kualitas", permission: "harvest.read", icon: "harvest", path: "/harvest" },
-  { label: "Penjualan", caption: "Transaksi hasil panen", permission: "sales.read", icon: "sales", path: "/sales" },
-  { label: "Keuangan", caption: "Kas, piutang, dan biaya", permission: "finance.read", icon: "finance", path: "/finance" },
-  { label: "Bagi hasil", caption: "Investor dan mitra", permission: "profit-sharing.read", icon: "share", path: "/profit-sharing" },
-  { label: "Evaluasi", caption: "Histori lahan & musim", permission: "finance.read", icon: "history", path: "/evaluations/season-history" },
-  { label: "Tim", caption: "Anggota dan peran", permission: "members.read", icon: "team", path: null },
-];
 
 const iconPaths: Record<IconName, string> = {
   dashboard: "M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z",
@@ -188,16 +167,6 @@ export function DashboardShell() {
     };
   }, [isMobileNavigationOpen]);
 
-  const visibleNavigation = useMemo(() => {
-    if (!state?.membership) {
-      return navigation.slice(0, 1);
-    }
-
-    return navigation.filter(
-      (item) => !item.permission || hasPermission(state.membership!, item.permission),
-    );
-  }, [state]);
-
   async function changeOrganization(organizationId: string) {
     if (!state) {
       return;
@@ -268,100 +237,20 @@ export function DashboardShell() {
   const roleLabel = state.membership
     ? getRoleLabel(state.membership.role)
     : "Tanpa organisasi";
-  const sidebarClassName = [
-    styles.sidebar,
-    isSidebarCollapsed ? styles.sidebarCollapsed : "",
-    isMobileNavigationOpen ? styles.sidebarOpen : "",
-  ].filter(Boolean).join(" ");
-
   return (
     <div
       className={`${styles.shell} ${isSidebarCollapsed ? styles.shellCollapsed : ""}`}
       data-theme={theme}
     >
-      <button
-        className={`${styles.drawerBackdrop} ${isMobileNavigationOpen ? styles.drawerBackdropVisible : ""}`}
-        type="button"
-        aria-label="Tutup navigasi"
-        tabIndex={isMobileNavigationOpen ? 0 : -1}
-        onClick={() => setIsMobileNavigationOpen(false)}
+      <ApplicationNavigation
+        pathname={pathname}
+        permissions={state.membership?.permissions ?? []}
+        hasMembership={Boolean(state.membership)}
+        isSidebarCollapsed={isSidebarCollapsed}
+        isMobileNavigationOpen={isMobileNavigationOpen}
+        onCloseMobileNavigation={() => setIsMobileNavigationOpen(false)}
+        onToggleSidebar={toggleSidebar}
       />
-
-      <aside className={sidebarClassName} aria-label="Navigasi aplikasi">
-        <div className={styles.sidebarHeader}>
-          <div className={styles.brandHolder}>
-            <BrandMark compact={isSidebarCollapsed && !isMobileNavigationOpen} />
-          </div>
-          <button
-            className={styles.mobileCloseButton}
-            type="button"
-            aria-label="Tutup navigasi"
-            onClick={() => setIsMobileNavigationOpen(false)}
-          >
-            <AppIcon name="close" />
-          </button>
-        </div>
-
-        <div className={styles.navigationLabel}>Menu utama</div>
-        <nav className={styles.navigation}>
-          {visibleNavigation.map((item) => {
-            const isActive = item.path === "/cultivation"
-              ? pathname.startsWith("/cultivation")
-              : item.path === "/master-data/commodities"
-                ? pathname.startsWith("/master-data")
-                : item.path === "/finance"
-                  ? pathname.startsWith("/finance")
-                  : item.path === "/profit-sharing"
-                    ? pathname.startsWith("/profit-sharing")
-                    : item.path === "/evaluations/season-history"
-                      ? pathname.startsWith("/evaluations")
-                      : item.path === pathname;
-            const isAvailable = item.path !== null;
-
-            return (
-              <button
-                key={item.label}
-                className={`${styles.navigationItem} ${isActive ? styles.navigationItemActive : ""}`}
-                type="button"
-                disabled={!isAvailable}
-                aria-current={isActive ? "page" : undefined}
-                aria-label={`${item.label}. ${item.caption}`}
-                title={`${item.label} - ${item.caption}`}
-                onClick={() => {
-                  setIsMobileNavigationOpen(false);
-                  if (item.path && !isActive) {
-                    router.push(item.path);
-                  }
-                }}
-              >
-                <span className={styles.navigationIcon}><AppIcon name={item.icon} /></span>
-                <span className={styles.navigationCopy}>
-                  <strong>{item.label}</strong>
-                  <small>{item.caption}</small>
-                </span>
-                {!isAvailable && <span className={styles.soonBadge}>Segera</span>}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className={styles.sidebarStatus}>
-          <span className={styles.connectionDot} />
-          <span>
-            <strong>API terhubung</strong>
-            <small>Cookie &amp; CSRF aman</small>
-          </span>
-        </div>
-
-        <button
-          className={styles.collapseButton}
-          type="button"
-          aria-label={isSidebarCollapsed ? "Perlebar sidebar" : "Perkecil sidebar"}
-          onClick={toggleSidebar}
-        >
-          <AppIcon name={isSidebarCollapsed ? "expand" : "collapse"} />
-        </button>
-      </aside>
 
       <div className={styles.workspace}>
         <header className={styles.topbar}>

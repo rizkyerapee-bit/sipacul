@@ -1,0 +1,865 @@
+.sidebar {
+  position: sticky;
+  z-index: 40;
+  top: 0;
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  height: 100vh;
+  padding: 8px;
+  border-right: 1px solid var(--sidebar-border, var(--app-line));
+  background: var(--sidebar, var(--app-sidebar));
+  flex-direction: column;
+  transition: transform 220ms ease, background-color 180ms ease;
+}
+
+.sidebarHeader {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brandHolder {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brandHolder :global(.brand) {
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.brandHolder :global(.brand__mark) {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md, 8px);
+  background: var(--app-green-800, #1e5a47);
+  box-shadow: none;
+}
+
+.brandHolder :global(.brand__mark svg) {
+  width: 22px;
+  height: 22px;
+}
+
+.brandHolder :global(.brand__copy strong) {
+  color: var(--app-text);
+  font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.brandHolder :global(.brand__copy small) {
+  display: none;
+}
+
+.navigationSearchButton {
+  display: grid;
+  width: 100%;
+  min-height: 40px;
+  margin: 10px 0 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--app-line);
+  border-radius: var(--radius-md, 8px);
+  color: var(--app-text-muted);
+  background: var(--app-surface);
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.navigationSearchButton:hover,
+.navigationSearchButton:focus-visible {
+  color: var(--app-green-700);
+  border-color: var(--app-green-600);
+  background: var(--app-green-50);
+  outline: none;
+}
+
+.navigationSearchIcon,
+.navigationIcon,
+.commandTitleIcon,
+.commandResultIcon {
+  display: grid;
+  place-items: center;
+}
+
+.navigationSearchIcon {
+  width: 32px;
+  height: 32px;
+}
+
+.navigationSearchIcon svg,
+.navigationIcon svg,
+.commandTitleIcon svg,
+.commandResultIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.navigationSearchCopy {
+  overflow: hidden;
+  color: var(--app-text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navigationSearchButton kbd,
+.commandSearch kbd,
+.commandFooter kbd {
+  border: 1px solid var(--app-line);
+  border-bottom-color: var(--app-line-strong);
+  border-radius: 5px;
+  color: var(--app-text-muted);
+  background: var(--app-surface-soft);
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.navigationSearchButton kbd {
+  padding: 4px 6px;
+  white-space: nowrap;
+}
+
+.navigation {
+  display: grid;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 1px;
+  gap: 4px;
+}
+
+.navigationHome {
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--app-line);
+}
+
+.navigationGroups {
+  display: grid;
+  gap: 3px;
+}
+
+.navigationGroup {
+  display: grid;
+}
+
+.navigationGroupToggle {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 7px;
+  color: var(--app-text-muted);
+  background: transparent;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+}
+
+.navigationGroupToggle:hover {
+  color: var(--app-text-soft);
+  background: var(--app-surface-soft);
+}
+
+.navigationGroupToggle > span:first-child {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.navigationGroupChevron {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  place-items: center;
+  transition: transform 150ms ease;
+}
+
+.navigationGroupChevron svg {
+  width: 13px;
+  height: 13px;
+}
+
+.navigationGroupChevronOpen {
+  transform: rotate(180deg);
+}
+
+.navigationGroupItems {
+  display: grid;
+  gap: 2px;
+}
+
+.navigationGroupItemsCollapsed {
+  display: none;
+}
+
+.navigationItem {
+  display: grid;
+  width: 100%;
+  min-height: 40px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--radius-md, 8px);
+  color: var(--app-text-soft);
+  background: transparent;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  text-align: left;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.navigationItem:hover {
+  color: var(--sidebar-foreground, var(--app-text));
+  background: var(--sidebar-accent, var(--app-green-50));
+}
+
+.navigationItemActive,
+.navigationItemActive:hover {
+  color: var(--sidebar-accent-foreground, var(--app-green-700));
+  background: var(--sidebar-accent, var(--app-green-50));
+}
+
+.navigationIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md, 8px);
+  color: var(--app-text-muted);
+  background: transparent;
+}
+
+.navigationItemActive .navigationIcon {
+  color: var(--sidebar-accent-foreground, var(--app-green-700));
+}
+
+.navigationCopy {
+  display: grid;
+  min-width: 0;
+  gap: 0;
+}
+
+.navigationCopy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navigationCopy small {
+  display: none;
+}
+
+.sidebarStatus {
+  display: flex;
+  min-height: 48px;
+  margin-top: auto;
+  padding: 8px;
+  border: 1px solid var(--app-line);
+  border-radius: var(--radius-md, 8px);
+  background: var(--app-surface-soft);
+  align-items: center;
+  gap: 9px;
+  overflow: hidden;
+}
+
+.sidebarStatus > span:last-child {
+  display: grid;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.sidebarStatus strong {
+  color: var(--app-text-soft);
+  font-size: 9px;
+}
+
+.sidebarStatus small {
+  color: var(--app-text-muted);
+  font-size: 8px;
+}
+
+.connectionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4eaa70;
+  box-shadow: 0 0 0 4px rgba(78, 170, 112, 0.14);
+  flex: 0 0 auto;
+}
+
+.collapseButton {
+  position: absolute;
+  top: 50%;
+  right: -13px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 50%;
+  color: var(--app-text-muted);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  place-items: center;
+  transform: translateY(-50%);
+}
+
+.collapseButton:hover {
+  color: var(--app-green-800);
+  border-color: var(--app-green-600);
+}
+
+.collapseButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sidebarCollapsed {
+  padding-inline: 8px;
+}
+
+.sidebarCollapsed .navigationSearchButton {
+  width: 48px;
+  padding: 4px 8px;
+  grid-template-columns: 32px;
+  justify-self: center;
+}
+
+.sidebarCollapsed .navigationSearchCopy,
+.sidebarCollapsed .navigationSearchButton kbd,
+.sidebarCollapsed .navigationGroupToggle,
+.sidebarCollapsed .navigationCopy,
+.sidebarCollapsed .sidebarStatus > span:last-child {
+  display: none;
+}
+
+.sidebarCollapsed .navigation {
+  justify-items: center;
+}
+
+.sidebarCollapsed .navigationHome,
+.sidebarCollapsed .navigationGroups,
+.sidebarCollapsed .navigationGroup,
+.sidebarCollapsed .navigationGroupItems {
+  width: 100%;
+}
+
+.sidebarCollapsed .navigationHome {
+  display: grid;
+  justify-items: center;
+}
+
+.sidebarCollapsed .navigationItem {
+  width: 48px;
+  padding: 4px 8px;
+  grid-template-columns: 32px;
+  justify-self: center;
+}
+
+.sidebarCollapsed .sidebarStatus {
+  justify-content: center;
+}
+
+.mobileCloseButton {
+  display: none;
+  padding: 0;
+  border: 1px solid var(--app-line);
+  color: var(--app-text-soft);
+  background: var(--app-surface);
+  place-items: center;
+}
+
+.mobileCloseButton:hover {
+  color: var(--app-green-700);
+  border-color: var(--app-green-600);
+  background: var(--app-green-50);
+}
+
+.mobileCloseButton svg {
+  width: 17px;
+  height: 17px;
+}
+
+.drawerBackdrop {
+  display: none;
+}
+
+.commandLayer {
+  position: fixed;
+  z-index: 90;
+  inset: 0;
+  display: grid;
+  padding: clamp(24px, 8vh, 80px) 18px 24px;
+  place-items: start center;
+}
+
+.commandBackdrop {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(6, 14, 10, 0.58);
+  backdrop-filter: blur(4px);
+}
+
+.commandPanel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: min(680px, 100%);
+  max-height: min(720px, calc(100dvh - 48px));
+  overflow: hidden;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 16px;
+  color: var(--app-text);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-large);
+}
+
+.commandHeader {
+  display: flex;
+  padding: 16px 18px 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.commandTitle {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.commandTitleIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--app-green-700);
+  background: var(--app-green-50);
+}
+
+.commandTitle > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.commandTitle strong {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.commandTitle small {
+  overflow: hidden;
+  color: var(--app-text-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandClose {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--app-line);
+  border-radius: 9px;
+  color: var(--app-text-muted);
+  background: var(--app-surface);
+  flex: 0 0 auto;
+  place-items: center;
+}
+
+.commandClose:hover {
+  color: var(--app-green-700);
+  border-color: var(--app-green-600);
+}
+
+.commandClose svg {
+  width: 16px;
+  height: 16px;
+}
+
+.commandSearch {
+  display: grid;
+  min-height: 50px;
+  margin: 0 18px 12px;
+  padding: 0 12px;
+  border: 1px solid var(--app-line-strong);
+  border-radius: 11px;
+  color: var(--app-text-muted);
+  background: var(--app-surface-soft);
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.commandSearch:focus-within {
+  border-color: var(--app-green-600);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-green-600) 14%, transparent);
+}
+
+.commandSearch svg {
+  width: 18px;
+  height: 18px;
+}
+
+.commandSearch input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  outline: none;
+  color: var(--app-text);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+}
+
+.commandSearch input::placeholder {
+  color: var(--app-text-muted);
+}
+
+.commandSearch kbd {
+  padding: 5px 7px;
+}
+
+.commandResults {
+  min-height: 170px;
+  overflow-y: auto;
+  padding: 0 10px 10px;
+}
+
+.commandSectionLabel {
+  display: flex;
+  min-height: 30px;
+  padding: 5px 8px;
+  color: var(--app-text-muted);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.commandSectionLabel span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+
+.commandSectionLabel small {
+  font-size: 9px;
+}
+
+.commandResultList {
+  display: grid;
+  gap: 3px;
+}
+
+.commandResult {
+  display: grid;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--app-text-soft);
+  background: transparent;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  text-align: left;
+}
+
+.commandResult:hover,
+.commandResult:focus-visible {
+  border-color: var(--app-line);
+  outline: none;
+  color: var(--app-text);
+  background: var(--app-green-50);
+}
+
+.commandResultIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--app-green-700);
+  background: var(--app-surface-soft);
+}
+
+.commandResultCopy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.commandResultCopy strong {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandResultCopy small {
+  overflow: hidden;
+  color: var(--app-text-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commandResultMeta {
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--app-text-muted);
+  background: var(--app-surface-soft);
+  font-size: 8px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.commandEmpty {
+  display: grid;
+  min-height: 150px;
+  padding: 24px;
+  color: var(--app-text-muted);
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  gap: 6px;
+}
+
+.commandEmpty svg {
+  width: 24px;
+  height: 24px;
+}
+
+.commandEmpty strong {
+  color: var(--app-text-soft);
+  font-size: 12px;
+}
+
+.commandEmpty small {
+  max-width: 430px;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.commandFooter {
+  display: flex;
+  min-height: 42px;
+  padding: 8px 18px;
+  border-top: 1px solid var(--app-line);
+  color: var(--app-text-muted);
+  background: var(--app-surface-soft);
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 8px;
+}
+
+.commandFooter > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.commandFooter kbd {
+  padding: 3px 5px;
+}
+
+@media (max-width: 960px) {
+  .sidebar,
+  .sidebarCollapsed {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(306px, calc(100vw - 42px));
+    height: 100dvh;
+    padding: 16px;
+    border-right: 1px solid var(--app-line);
+    box-shadow: var(--app-shadow-large);
+    transform: translateX(-105%);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarCollapsed .navigationSearchButton {
+    width: 100%;
+    padding: 4px 8px;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+    justify-self: stretch;
+  }
+
+  .sidebarCollapsed .navigationSearchCopy {
+    display: block;
+  }
+
+  .sidebarCollapsed .navigationSearchButton kbd {
+    display: inline;
+  }
+
+  .sidebarCollapsed .navigationGroupToggle {
+    display: flex;
+  }
+
+  .sidebarCollapsed .navigationCopy,
+  .sidebarCollapsed .sidebarStatus > span:last-child {
+    display: grid;
+  }
+
+  .sidebarCollapsed .navigation {
+    justify-items: stretch;
+  }
+
+  .sidebarCollapsed .navigationHome,
+  .sidebarCollapsed .navigationGroups,
+  .sidebarCollapsed .navigationGroup,
+  .sidebarCollapsed .navigationGroupItems {
+    width: 100%;
+  }
+
+  .sidebarCollapsed .navigationHome {
+    justify-items: stretch;
+  }
+
+  .sidebarCollapsed .navigationItem {
+    width: 100%;
+    padding: 4px 8px;
+    grid-template-columns: 32px minmax(0, 1fr);
+    justify-self: stretch;
+  }
+
+  .sidebarCollapsed .sidebarStatus {
+    justify-content: flex-start;
+  }
+
+  .collapseButton {
+    display: none;
+  }
+
+  .mobileCloseButton {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .drawerBackdrop {
+    position: fixed;
+    z-index: 35;
+    inset: 0;
+    display: block;
+    padding: 0;
+    border: 0;
+    pointer-events: none;
+    opacity: 0;
+    background: rgba(6, 14, 10, 0.54);
+    backdrop-filter: blur(2px);
+    transition: opacity 200ms ease;
+  }
+
+  .drawerBackdropVisible {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .navigationCopy small {
+    display: block;
+    overflow: hidden;
+    color: var(--app-text-muted);
+    font-size: 9px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .navigationItemActive .navigationCopy small {
+    color: var(--app-green-700);
+  }
+}
+
+@media (max-width: 620px) {
+  .commandLayer {
+    padding: 12px;
+    place-items: center;
+  }
+
+  .commandPanel {
+    max-height: calc(100dvh - 24px);
+    border-radius: 14px;
+  }
+
+  .commandHeader {
+    padding: 14px 14px 10px;
+  }
+
+  .commandTitle small {
+    display: none;
+  }
+
+  .commandSearch {
+    margin: 0 14px 10px;
+  }
+
+  .commandResult {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .commandResultMeta {
+    display: none;
+  }
+
+  .commandFooter {
+    padding-inline: 14px;
+  }
+
+  .commandFooter > span:last-child {
+    display: none;
+  }
+}
+
+@media (max-width: 390px) {
+  .navigationSearchButton kbd {
+    display: none;
+  }
+
+  .commandSearch kbd {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .drawerBackdrop,
+  .navigationGroupChevron,
+  .navigationItem {
+    transition-duration: 0.01ms;
+  }
+}

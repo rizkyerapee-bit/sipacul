@@ -6,8 +6,12 @@ const css = readFileSync(
   resolve(process.cwd(), "src/components/dashboard-shell.module.css"),
   "utf8",
 );
-const shell = readFileSync(
-  resolve(process.cwd(), "src/components/dashboard-shell.tsx"),
+const navigationCss = readFileSync(
+  resolve(process.cwd(), "src/components/application-navigation.module.css"),
+  "utf8",
+);
+const navigation = readFileSync(
+  resolve(process.cwd(), "src/components/application-navigation.tsx"),
   "utf8",
 );
 
@@ -38,9 +42,9 @@ describe("dashboard shell design compatibility foundation", () => {
   });
 
   it("retains navigation captions as accessible metadata when the desktop visual caption is hidden", () => {
-    expect(css).toContain(".navigationCopy small {");
-    expect(css).toContain("display: none;");
-    expect(shell).toContain('aria-label={`${item.label}. ${item.caption}`}');
-    expect(shell).toContain('title={`${item.label} - ${item.caption}`}');
+    expect(navigationCss).toContain(".navigationCopy small {");
+    expect(navigationCss).toContain("display: none;");
+    expect(navigation).toContain('aria-label={`${item.label}. ${item.caption}`}');
+    expect(navigation).toContain('title={`${item.label} - ${item.caption}`}');
   });
 });
