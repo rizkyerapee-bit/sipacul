@@ -36,6 +36,11 @@ import type {
   CreateSalePaymentRequest,
   CreateSaleRequest,
   CultivationSop,
+  AddCultivationSopStepRequest,
+  CreateCultivationSopRequest,
+  MoveCultivationSopStepRequest,
+  UpdateCultivationSopRequest,
+  UpdateCultivationSopStepRequest,
   CultivationActivity,
   CultivationExpense,
   CultivationExpenseFilter,
@@ -451,9 +456,125 @@ export function setCommodityActive(
 }
 export function getCultivationSops(
   organizationId: string,
+  commodityId?: string,
 ): Promise<CultivationSop[]> {
+  const query = commodityId
+    ? `?commodityId=${encodeURIComponent(commodityId)}`
+    : "";
+
   return apiRequest<CultivationSop[]>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops${query}`,
+    ),
+  );
+}
+
+export function getCultivationSop(
+  organizationId: string,
+  cultivationSopId: string,
+): Promise<CultivationSop> {
+  return apiRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}`,
+    ),
+  );
+}
+
+export function createCultivationSop(
+  organizationId: string,
+  request: CreateCultivationSopRequest,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
     getOrganizationResourcePath(organizationId, "/cultivation-sops"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCultivationSop(
+  organizationId: string,
+  cultivationSopId: string,
+  request: UpdateCultivationSopRequest,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function setCultivationSopActive(
+  organizationId: string,
+  cultivationSopId: string,
+  isActive: boolean,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}/${isActive ? "activate" : "deactivate"}`,
+    ),
+    { method: "PATCH" },
+  );
+}
+
+export function addCultivationSopStep(
+  organizationId: string,
+  cultivationSopId: string,
+  request: AddCultivationSopStepRequest,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}/steps`,
+    ),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function updateCultivationSopStep(
+  organizationId: string,
+  cultivationSopId: string,
+  stepId: string,
+  request: UpdateCultivationSopStepRequest,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}/steps/${encodeURIComponent(stepId)}`,
+    ),
+    { method: "PUT", body: JSON.stringify(request) },
+  );
+}
+
+export function removeCultivationSopStep(
+  organizationId: string,
+  cultivationSopId: string,
+  stepId: string,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}/steps/${encodeURIComponent(stepId)}`,
+    ),
+    { method: "DELETE" },
+  );
+}
+
+export function moveCultivationSopStep(
+  organizationId: string,
+  cultivationSopId: string,
+  stepId: string,
+  request: MoveCultivationSopStepRequest,
+): Promise<CultivationSop> {
+  return csrfRequest<CultivationSop>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/cultivation-sops/${encodeURIComponent(cultivationSopId)}/steps/${encodeURIComponent(stepId)}/move`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
   );
 }
 

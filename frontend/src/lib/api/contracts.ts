@@ -174,6 +174,30 @@ export type CreateCommodityRequest = {
 };
 
 export type UpdateCommodityRequest = Omit<CreateCommodityRequest, "code">;
+export type CreateCultivationSopRequest = {
+  commodityId: string;
+  name: string;
+  description: string | null;
+};
+
+export type UpdateCultivationSopRequest = Omit<
+  CreateCultivationSopRequest,
+  "commodityId"
+>;
+
+export type AddCultivationSopStepRequest = {
+  name: string;
+  description: string | null;
+  plannedDayOffset: number;
+  estimatedDurationDays: number;
+  isRequired: boolean;
+};
+
+export type UpdateCultivationSopStepRequest = AddCultivationSopStepRequest;
+
+export type MoveCultivationSopStepRequest = {
+  newSequence: number;
+};
 export type CultivationSopStep = {
   id: string;
   organizationId: string;
