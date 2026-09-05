@@ -20,6 +20,36 @@ export type CurrentUserMembership = {
   permissions: string[];
 };
 
+export type AssignableOrganizationRole = 2 | 3 | 4;
+
+export type OrganizationMembershipStatus =
+  | 1
+  | 2
+  | "Active"
+  | "Suspended";
+
+export type OrganizationMember = {
+  membershipId: string;
+  userId: string;
+  email: string;
+  emailConfirmed: boolean;
+  userIsActive: boolean;
+  role: OrganizationRole;
+  status: OrganizationMembershipStatus;
+  joinedAt: string;
+  suspendedAt: string | null;
+};
+
+export type CreateOrganizationMemberRequest = {
+  email: string;
+  initialPassword: string | null;
+  role: AssignableOrganizationRole;
+};
+
+export type UpdateOrganizationMemberRoleRequest = {
+  role: AssignableOrganizationRole;
+};
+
 export type CurrentUser = {
   userId: string;
   email: string;

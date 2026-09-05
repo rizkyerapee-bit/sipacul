@@ -51,6 +51,9 @@ import type {
   LandSeasonHistory,
   LoginRequest,
   Organization,
+  OrganizationMember,
+  CreateOrganizationMemberRequest,
+  UpdateOrganizationMemberRoleRequest,
   ProfitSharingSettlement,
   ProfitSharingSettlementFilter,
   ProfitSharingPreview,
@@ -214,6 +217,64 @@ function getOrganizationResourcePath(
   resourcePath: string,
 ): string {
   return `/organizations/${encodeURIComponent(organizationId)}${resourcePath}`;
+}
+
+export function getOrganizationMembers(
+  organizationId: string,
+): Promise<OrganizationMember[]> {
+  return apiRequest<OrganizationMember[]>(
+    getOrganizationResourcePath(organizationId, "/members"),
+  );
+}
+
+export function getOrganizationMember(
+  organizationId: string,
+  membershipId: string,
+): Promise<OrganizationMember> {
+  return apiRequest<OrganizationMember>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/members/${encodeURIComponent(membershipId)}`,
+    ),
+  );
+}
+
+export function createOrganizationMember(
+  organizationId: string,
+  request: CreateOrganizationMemberRequest,
+): Promise<OrganizationMember> {
+  return csrfRequest<OrganizationMember>(
+    getOrganizationResourcePath(organizationId, "/members"),
+    { method: "POST", body: JSON.stringify(request) },
+  );
+}
+
+export function changeOrganizationMemberRole(
+  organizationId: string,
+  membershipId: string,
+  request: UpdateOrganizationMemberRoleRequest,
+): Promise<OrganizationMember> {
+  return csrfRequest<OrganizationMember>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/members/${encodeURIComponent(membershipId)}/role`,
+    ),
+    { method: "PATCH", body: JSON.stringify(request) },
+  );
+}
+
+export function setOrganizationMembershipActive(
+  organizationId: string,
+  membershipId: string,
+  isActive: boolean,
+): Promise<OrganizationMember> {
+  return csrfRequest<OrganizationMember>(
+    getOrganizationResourcePath(
+      organizationId,
+      `/members/${encodeURIComponent(membershipId)}/${isActive ? "activate" : "suspend"}`,
+    ),
+    { method: "PATCH" },
+  );
 }
 
 export function getLands(
