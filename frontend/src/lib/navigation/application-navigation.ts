@@ -7,7 +7,8 @@ export type NavigationIconName =
   | "finance"
   | "share"
   | "history"
-  | "catalog";
+  | "catalog"
+  | "team";
 
 export type ApplicationNavigationItem = {
   id: string;
@@ -195,6 +196,34 @@ export const applicationNavigationGroups: ApplicationNavigationGroup[] = [
         path: "/master-data/cultivation-sops",
         groupId: "master-data",
         groupLabel: "Master Data",
+      },
+    ],
+  },
+  {
+    id: "organization",
+    label: "Organisasi",
+    items: [
+      {
+        id: "organization-members",
+        label: "Anggota & Akses",
+        caption: "Tim, peran, dan status akses",
+        keywords: [
+          "anggota",
+          "akses",
+          "tim",
+          "organisasi",
+          "role",
+          "peran",
+          "admin",
+          "finance",
+          "operator",
+          "suspend",
+        ],
+        permission: "members.read",
+        icon: "team",
+        path: "/organization/members",
+        groupId: "organization",
+        groupLabel: "Organisasi",
       },
     ],
   },

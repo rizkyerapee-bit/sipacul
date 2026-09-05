@@ -11,6 +11,7 @@ import { HarvestManagement } from "@/components/harvest-management";
 import { LandManagement } from "@/components/land-management";
 import { CommodityManagement } from "@/components/commodity-management";
 import { CultivationSopManagement } from "@/components/cultivation-sop-management";
+import { OrganizationMemberManagement } from "@/components/organization-member-management";
 import { ProfitSharingManagement } from "@/components/profit-sharing-management";
 import { ReceivableManagement } from "@/components/receivable-management";
 import { SaleManagement } from "@/components/sale-management";
@@ -344,7 +345,15 @@ export function DashboardShell() {
 
         <main className={styles.content}>
           {errorMessage && <div className={styles.errorAlert} role="alert">{errorMessage}</div>}
-          {pathname === "/master-data/cultivation-sops" ? (
+          {pathname === "/organization/members" ? (
+            <OrganizationMemberManagement
+              key={state.membership?.organizationId ?? "no-organization"}
+              organization={state.organization}
+              organizationId={state.membership?.organizationId ?? null}
+              currentMembershipId={state.membership?.membershipId ?? null}
+              permissions={state.membership?.permissions ?? []}
+            />
+          ) : pathname === "/master-data/cultivation-sops" ? (
             <CultivationSopManagement
               key={state.membership?.organizationId ?? "no-organization"}
               organization={state.organization}
